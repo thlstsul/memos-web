@@ -1,1 +1,1 @@
-# memos web v0.18.1
+# memos web fcfb76a

@@ -2,7 +2,6 @@ import * as api from "@/helpers/api";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import useNavigateTo from "@/hooks/useNavigateTo";
 import { useGlobalStore } from "@/store/module";
-import { extractUsernameFromName } from "@/store/v1";
 import { User_Role } from "@/types/proto/api/v2/user_service";
 import { useTranslate } from "@/utils/i18n";
 import showAboutSiteDialog from "./AboutSiteDialog";
@@ -16,10 +15,10 @@ const UserBanner = () => {
   const globalStore = useGlobalStore();
   const { systemStatus } = globalStore.state;
   const user = useCurrentUser();
-  const title = user ? user.nickname : systemStatus.customizedProfile.name || "memos";
+  const title = user ? user.nickname || user.username : systemStatus.customizedProfile.name || "memos";
 
   const handleMyAccountClick = () => {
-    navigateTo(`/u/${encodeURIComponent(extractUsernameFromName(user.name))}`);
+    navigateTo(`/u/${encodeURIComponent(user.username)}`);
   };
 
   const handleAboutBtnClick = () => {
@@ -33,12 +32,12 @@ const UserBanner = () => {
   };
 
   return (
-    <div className="flex flex-row justify-between items-center relative w-full h-auto px-2 flex-nowrap shrink-0">
+    <div className="relative w-full h-auto px-1 shrink-0">
       <Dropdown
         className="w-auto"
         trigger={
           <div className="px-4 py-2 max-w-full flex flex-row justify-start items-center cursor-pointer rounded-2xl hover:shadow hover:bg-white dark:hover:bg-zinc-700">
-            <UserAvatar className="shadow" avatarUrl={user?.avatarUrl} />
+            <UserAvatar className="shadow shrink-0" avatarUrl={user?.avatarUrl} />
             <span className="px-1 text-lg font-medium text-slate-800 dark:text-gray-200 shrink truncate">{title}</span>
             {user?.role === User_Role.HOST ? (
               <span className="text-xs px-1 bg-blue-600 dark:bg-blue-800 rounded text-white dark:text-gray-200 shadow">MOD</span>
