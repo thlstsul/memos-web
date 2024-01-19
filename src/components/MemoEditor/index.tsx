@@ -1,6 +1,6 @@
 import { Select, Option, Button, IconButton, Divider } from "@mui/joy";
 import { uniqBy } from "lodash-es";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import useLocalStorage from "react-use/lib/useLocalStorage";
@@ -18,10 +18,12 @@ import showCreateMemoRelationDialog from "../CreateMemoRelationDialog";
 import showCreateResourceDialog from "../CreateResourceDialog";
 import Icon from "../Icon";
 import VisibilityIcon from "../VisibilityIcon";
+import MarkdownMenu from "./ActionButton/MarkdownMenu";
 import TagSelector from "./ActionButton/TagSelector";
 import Editor, { EditorRefActions } from "./Editor";
 import RelationListView from "./RelationListView";
 import ResourceListView from "./ResourceListView";
+import { handleEditorKeydownWithMarkdownShortcuts } from "./handlers";
 
 interface Props {
   className?: string;
@@ -92,6 +94,8 @@ const MemoEditor = (props: Props) => {
           setState((prevState) => ({
             ...prevState,
             memoVisibility: memo.visibility,
+            resourceList: memo.resources,
+            relationList: memo.relations,
           }));
           if (!contentCache) {
             editorRef.current?.setContent(memo.content ?? "");
@@ -112,6 +116,8 @@ const MemoEditor = (props: Props) => {
         handleSaveBtnClick();
         return;
       }
+
+      handleEditorKeydownWithMarkdownShortcuts(event, editorRef.current);
     }
     if (event.key === "Tab") {
       event.preventDefault();
@@ -281,6 +287,7 @@ const MemoEditor = (props: Props) => {
             id: memo.id,
             relations: state.relationList,
           });
+          await memoStore.getOrFetchMemoById(memo.id, { skipCache: true });
           if (onConfirm) {
             onConfirm(memo.id);
           }
@@ -310,6 +317,7 @@ const MemoEditor = (props: Props) => {
           id: memo.id,
           relations: state.relationList,
         });
+        await memoStore.getOrFetchMemoById(memo.id, { skipCache: true });
         if (onConfirm) {
           onConfirm(memo.id);
         }
@@ -319,62 +327,16 @@ const MemoEditor = (props: Props) => {
       console.error(error);
       toast.error(error.response.data.message);
     }
+
     setState((state) => {
       return {
         ...state,
         isRequesting: false,
+        resourceList: [],
+        relationList: [],
       };
     });
-
-    setState((prevState) => ({
-      ...prevState,
-      resourceList: [],
-    }));
   };
-
-  const handleCheckBoxBtnClick = () => {
-    if (!editorRef.current) {
-      return;
-    }
-    const currentPosition = editorRef.current?.getCursorPosition();
-    const currentLineNumber = editorRef.current?.getCursorLineNumber();
-    const currentLine = editorRef.current?.getLine(currentLineNumber);
-    let newLine = "";
-    let cursorChange = 0;
-    if (/^- \[( |x|X)\] /.test(currentLine)) {
-      newLine = currentLine.replace(/^- \[( |x|X)\] /, "");
-      cursorChange = -6;
-    } else if (/^\d+\. |- /.test(currentLine)) {
-      const match = currentLine.match(/^\d+\. |- /) ?? [""];
-      newLine = currentLine.replace(/^\d+\. |- /, "- [ ] ");
-      cursorChange = -match[0].length + 6;
-    } else {
-      newLine = "- [ ] " + currentLine;
-      cursorChange = 6;
-    }
-    editorRef.current?.setLine(currentLineNumber, newLine);
-    editorRef.current.setCursorPosition(currentPosition + cursorChange);
-    editorRef.current?.scrollToCursor();
-  };
-
-  const handleCodeBlockBtnClick = () => {
-    if (!editorRef.current) {
-      return;
-    }
-
-    const cursorPosition = editorRef.current.getCursorPosition();
-    const prevValue = editorRef.current.getContent().slice(0, cursorPosition);
-    if (prevValue === "" || prevValue.endsWith("\n")) {
-      editorRef.current?.insertText("", "```\n", "\n```");
-    } else {
-      editorRef.current?.insertText("", "\n```\n", "\n```");
-    }
-    editorRef.current?.scrollToCursor();
-  };
-
-  const handleTagSelectorClick = useCallback((tag: string) => {
-    editorRef.current?.insertText(`#${tag} `);
-  }, []);
 
   const handleEditorFocus = () => {
     editorRef.current?.focus();
@@ -397,39 +359,22 @@ const MemoEditor = (props: Props) => {
     <div
       className={`${
         className ?? ""
-      } relative w-full flex flex-col justify-start items-start bg-white dark:bg-zinc-700 px-4 pt-4 rounded-lg border border-gray-200 dark:border-zinc-600`}
+      } relative w-full flex flex-col justify-start items-start bg-white dark:bg-zinc-800 px-4 pt-4 rounded-lg border border-gray-200 dark:border-zinc-700`}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onDrop={handleDropEvent}
       onFocus={handleEditorFocus}
     >
       <Editor ref={editorRef} {...editorConfig} />
-      <div className="relative w-full flex flex-row justify-between items-center pt-2">
-        <div className="flex flex-row justify-start items-center">
-          <TagSelector onTagSelectorClick={(tag) => handleTagSelectorClick(tag)} />
-          <IconButton
-            className="flex flex-row justify-center items-center p-1 w-auto h-auto mr-1 select-none rounded cursor-pointer text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-zinc-800 hover:shadow"
-            onClick={handleUploadFileBtnClick}
-          >
+      <div className="relative w-full flex flex-row justify-between items-center pt-2" onFocus={(e) => e.stopPropagation()}>
+        <div className="flex flex-row justify-start items-center opacity-80">
+          <MarkdownMenu editorRef={editorRef} />
+          <TagSelector editorRef={editorRef} />
+          <IconButton size="sm" onClick={handleUploadFileBtnClick}>
             <Icon.Image className="w-5 h-5 mx-auto" />
           </IconButton>
-          <IconButton
-            className="flex flex-row justify-center items-center p-1 w-auto h-auto mr-1 select-none rounded cursor-pointer text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-zinc-800 hover:shadow"
-            onClick={handleAddMemoRelationBtnClick}
-          >
+          <IconButton size="sm" onClick={handleAddMemoRelationBtnClick}>
             <Icon.Link className="w-5 h-5 mx-auto" />
-          </IconButton>
-          <IconButton
-            className="flex flex-row justify-center items-center p-1 w-auto h-auto mr-1 select-none rounded cursor-pointer text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-zinc-800 hover:shadow"
-            onClick={handleCheckBoxBtnClick}
-          >
-            <Icon.CheckSquare className="w-5 h-5 mx-auto" />
-          </IconButton>
-          <IconButton
-            className="flex flex-row justify-center items-center p-1 w-auto h-auto mr-1 select-none rounded cursor-pointer text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-zinc-800 hover:shadow"
-            onClick={handleCodeBlockBtnClick}
-          >
-            <Icon.Code className="w-5 h-5 mx-auto" />
           </IconButton>
         </div>
       </div>
@@ -456,7 +401,12 @@ const MemoEditor = (props: Props) => {
           </Select>
         </div>
         <div className="shrink-0 flex flex-row justify-end items-center">
-          <Button color="success" disabled={!allowSave} onClick={handleSaveBtnClick}>
+          <Button
+            disabled={!allowSave}
+            loading={state.isRequesting}
+            endDecorator={<Icon.Send className="w-4 h-auto" />}
+            onClick={handleSaveBtnClick}
+          >
             {t("editor.save")}
           </Button>
         </div>

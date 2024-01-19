@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import App from "@/App";
+import SuspenseWrapper from "@/layouts/SuspenseWrapper";
 import { initialGlobalState } from "@/store/module";
 import AuthStatusProvider from "./AuthStatusProvider";
 
@@ -17,6 +18,7 @@ const Timeline = lazy(() => import("@/pages/Timeline"));
 const Resources = lazy(() => import("@/pages/Resources"));
 const Inboxes = lazy(() => import("@/pages/Inboxes"));
 const Setting = lazy(() => import("@/pages/Setting"));
+const About = lazy(() => import("@/pages/About"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const PermissionDenied = lazy(() => import("@/pages/PermissionDenied"));
 
@@ -36,16 +38,22 @@ const router = createBrowserRouter([
     loader: () => initialGlobalStateLoader(),
     children: [
       {
-        path: "/auth",
-        element: <SignIn />,
-      },
-      {
-        path: "/auth/signup",
-        element: <SignUp />,
-      },
-      {
-        path: "/auth/callback",
-        element: <AuthCallback />,
+        path: "/auth/",
+        element: <SuspenseWrapper />,
+        children: [
+          {
+            path: "",
+            element: <SignIn />,
+          },
+          {
+            path: "signup",
+            element: <SignUp />,
+          },
+          {
+            path: "callback",
+            element: <AuthCallback />,
+          },
+        ],
       },
       {
         path: "/",
@@ -110,6 +118,10 @@ const router = createBrowserRouter([
           {
             path: "u/:username",
             element: <UserProfile />,
+          },
+          {
+            path: "about",
+            element: <About />,
           },
           {
             path: "403",

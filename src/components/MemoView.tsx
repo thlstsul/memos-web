@@ -1,4 +1,5 @@
 import { Divider, Tooltip } from "@mui/joy";
+import copy from "copy-to-clipboard";
 import { memo, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -7,7 +8,6 @@ import { UNKNOWN_ID } from "@/helpers/consts";
 import { getRelativeTimeString, getTimeStampByDate } from "@/helpers/datetime";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import useNavigateTo from "@/hooks/useNavigateTo";
-import { useFilterStore } from "@/store/module";
 import { useUserStore, extractUsernameFromName, useMemoStore } from "@/store/v1";
 import { RowStatus } from "@/types/proto/api/v2/common";
 import { MemoRelation_Type } from "@/types/proto/api/v2/memo_relation_service";
@@ -40,13 +40,11 @@ const MemoView: React.FC<Props> = (props: Props) => {
   const t = useTranslate();
   const navigateTo = useNavigateTo();
   const { i18n } = useTranslation();
-  const filterStore = useFilterStore();
   const memoStore = useMemoStore();
   const userStore = useUserStore();
   const user = useCurrentUser();
   const [displayTime, setDisplayTime] = useState<string>(getRelativeTimeString(getTimeStampByDate(memo.displayTime)));
   const [creator, setCreator] = useState(userStore.getUserByUsername(extractUsernameFromName(memo.creator)));
-  const [parentMemo, setParentMemo] = useState<Memo | undefined>(undefined);
   const memoContainerRef = useRef<HTMLDivElement>(null);
   const referenceRelations = memo.relations.filter((relation) => relation.type === MemoRelation_Type.REFERENCE);
   const readonly = memo.creator !== user?.name;
@@ -56,15 +54,6 @@ const MemoView: React.FC<Props> = (props: Props) => {
       const user = await userStore.getOrFetchUserByUsername(extractUsernameFromName(memo.creator));
       setCreator(user);
     })();
-
-    const parentMemoId = memo.relations.find(
-      (relation) => relation.memoId === memo.id && relation.type === MemoRelation_Type.COMMENT
-    )?.relatedMemoId;
-    if (parentMemoId) {
-      memoStore.getOrFetchMemoById(parentMemoId, { skipStore: true }).then((memo: Memo) => {
-        setParentMemo(memo);
-      });
-    }
   }, []);
 
   // Update display time string.
@@ -158,18 +147,15 @@ const MemoView: React.FC<Props> = (props: Props) => {
     });
   };
 
+  const handleCopyMemoId = () => {
+    copy(String(memo.id));
+    toast.success("Copied to clipboard!");
+  };
+
   const handleMemoContentClick = async (e: React.MouseEvent) => {
     const targetEl = e.target as HTMLElement;
 
-    if (targetEl.classList.contains("tag-container")) {
-      const tagName = targetEl.innerText.slice(1);
-      const currTagQuery = filterStore.getState().tag;
-      if (currTagQuery === tagName) {
-        filterStore.setTagFilter(undefined);
-      } else {
-        filterStore.setTagFilter(tagName);
-      }
-    } else if (targetEl.tagName === "IMG") {
+    if (targetEl.tagName === "IMG") {
       const imgUrl = targetEl.getAttribute("src");
       if (imgUrl) {
         showPreviewImageDialog([imgUrl], 0);
@@ -206,21 +192,16 @@ const MemoView: React.FC<Props> = (props: Props) => {
             <>
               <Icon.Dot className="w-4 h-auto text-gray-400 dark:text-zinc-400" />
               <Tooltip title={"Pinned"} placement="top">
-                <Icon.Bookmark className="w-4 h-auto text-green-600" />
+                <Icon.Bookmark className="w-4 h-auto text-amber-500" />
               </Tooltip>
             </>
           )}
+        </div>
+        <div className="btns-container space-x-2">
           <div className="w-auto hidden group-hover:flex flex-row justify-between items-center">
-            <Icon.Dot className="w-4 h-auto text-gray-400 dark:text-zinc-400" />
-            <Link className="flex flex-row justify-start items-center" to={`/m/${memo.id}`} unstable_viewTransition>
-              <Tooltip title={"Identifier"} placement="top">
-                <span className="text-sm text-gray-500 dark:text-gray-400">#{memo.id}</span>
-              </Tooltip>
-            </Link>
             {props.showVisibility && memo.visibility !== Visibility.PRIVATE && (
               <>
-                <Icon.Dot className="w-4 h-auto text-gray-400 dark:text-zinc-400" />
-                <Tooltip title={t(`memo.visibility.${convertVisibilityToString(memo.visibility)}` as any)} placement="top">
+                <Tooltip title={t(`memo.visibility.${convertVisibilityToString(memo.visibility).toLowerCase()}` as any)} placement="top">
                   <span>
                     <VisibilityIcon visibility={memo.visibility} />
                   </span>
@@ -228,8 +209,6 @@ const MemoView: React.FC<Props> = (props: Props) => {
               </>
             )}
           </div>
-        </div>
-        <div className="btns-container space-x-2">
           {!readonly && (
             <>
               <span className="btn more-action-btn">
@@ -237,22 +216,18 @@ const MemoView: React.FC<Props> = (props: Props) => {
               </span>
               <div className="more-action-btns-wrapper">
                 <div className="more-action-btns-container min-w-[6em]">
-                  {!parentMemo && (
-                    <span className="btn" onClick={handleTogglePinMemoBtnClick}>
-                      {memo.pinned ? <Icon.BookmarkMinus className="w-4 h-auto mr-2" /> : <Icon.BookmarkPlus className="w-4 h-auto mr-2" />}
-                      {memo.pinned ? t("common.unpin") : t("common.pin")}
-                    </span>
-                  )}
+                  <span className="btn" onClick={handleTogglePinMemoBtnClick}>
+                    {memo.pinned ? <Icon.BookmarkMinus className="w-4 h-auto mr-2" /> : <Icon.BookmarkPlus className="w-4 h-auto mr-2" />}
+                    {memo.pinned ? t("common.unpin") : t("common.pin")}
+                  </span>
                   <span className="btn" onClick={handleEditMemoClick}>
                     <Icon.Edit3 className="w-4 h-auto mr-2" />
                     {t("common.edit")}
                   </span>
-                  {!parentMemo && (
-                    <span className="btn" onClick={handleMarkMemoClick}>
-                      <Icon.Link className="w-4 h-auto mr-2" />
-                      {t("common.mark")}
-                    </span>
-                  )}
+                  <span className="btn" onClick={handleMarkMemoClick}>
+                    <Icon.Link className="w-4 h-auto mr-2" />
+                    {t("common.mark")}
+                  </span>
                   <span className="btn" onClick={() => showShareMemoDialog(memo)}>
                     <Icon.Share className="w-4 h-auto mr-2" />
                     {t("common.share")}
@@ -266,26 +241,19 @@ const MemoView: React.FC<Props> = (props: Props) => {
                     <Icon.Trash className="w-4 h-auto mr-2" />
                     {t("common.delete")}
                   </span>
+                  <Divider className="!my-1" />
+                  <div className="w-full px-3 text-xs text-gray-400">
+                    <span className="cursor-pointer" onClick={handleCopyMemoId}>
+                      ID: <span className="font-mono">{memo.id}</span>
+                    </span>
+                  </div>
                 </div>
               </div>
             </>
           )}
         </div>
       </div>
-      {props.showParent && parentMemo && (
-        <div className="w-auto max-w-full mb-1">
-          <Link
-            className="px-2 py-0.5 border rounded-full max-w-xs w-auto text-xs flex flex-row justify-start items-center flex-nowrap text-gray-600 dark:text-gray-400 dark:border-gray-500 hover:shadow hover:opacity-80"
-            to={`/m/${parentMemo.id}`}
-            unstable_viewTransition
-          >
-            <Icon.ArrowUpRightFromCircle className="w-3 h-auto shrink-0 opacity-60" />
-            <span className="mx-1 opacity-60">#{parentMemo.id}</span>
-            <span className="truncate">{parentMemo.content}</span>
-          </Link>
-        </div>
-      )}
-      <MemoContent content={memo.content} nodes={memo.nodes} onMemoContentClick={handleMemoContentClick} />
+      <MemoContent memoId={memo.id} nodes={memo.nodes} readonly={readonly} onClick={handleMemoContentClick} />
       <MemoResourceListView resourceList={memo.resources} />
       <MemoRelationListView memo={memo} relationList={referenceRelations} />
     </div>
