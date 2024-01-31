@@ -15,6 +15,11 @@ const CodeBlock: React.FC<Props> = ({ language, content }: Props) => {
   const formatedLanguage = language.toLowerCase() || "plaintext";
   let highlightedCode = hljs.highlightAuto(content).value;
 
+  // Users can set Markdown code blocks as `__html` to render HTML directly.
+  if (formatedLanguage === "__html") {
+    return <div className="w-full !my-2" dangerouslySetInnerHTML={{ __html: content }} />;
+  }
+
   try {
     const temp = hljs.highlight(content, {
       language: formatedLanguage,

@@ -1,6 +1,7 @@
 import { Divider, Tooltip } from "@mui/joy";
+import classNames from "classnames";
 import copy from "copy-to-clipboard";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
@@ -30,13 +31,13 @@ import "@/less/memo.less";
 interface Props {
   memo: Memo;
   showCreator?: boolean;
-  showParent?: boolean;
   showVisibility?: boolean;
-  showPinnedStyle?: boolean;
+  showPinned?: boolean;
+  className?: string;
 }
 
 const MemoView: React.FC<Props> = (props: Props) => {
-  const { memo } = props;
+  const { memo, className } = props;
   const t = useTranslate();
   const navigateTo = useNavigateTo();
   const { i18n } = useTranslation();
@@ -74,7 +75,7 @@ const MemoView: React.FC<Props> = (props: Props) => {
     if (event.altKey) {
       showChangeMemoCreatedTsDialog(memo.id);
     } else {
-      navigateTo(`/m/${memo.id}`);
+      navigateTo(`/m/${memo.name}`);
     }
   };
 
@@ -86,7 +87,7 @@ const MemoView: React.FC<Props> = (props: Props) => {
             id: memo.id,
             pinned: false,
           },
-          ["pinned"]
+          ["pinned"],
         );
       } else {
         await memoStore.updateMemo(
@@ -94,7 +95,7 @@ const MemoView: React.FC<Props> = (props: Props) => {
             id: memo.id,
             pinned: true,
           },
-          ["pinned"]
+          ["pinned"],
         );
       }
     } catch (error) {
@@ -105,6 +106,7 @@ const MemoView: React.FC<Props> = (props: Props) => {
   const handleEditMemoClick = () => {
     showMemoEditorDialog({
       memoId: memo.id,
+      cacheKey: `${memo.id}-${memo.updateTime}`,
     });
   };
 
@@ -127,7 +129,7 @@ const MemoView: React.FC<Props> = (props: Props) => {
           id: memo.id,
           rowStatus: RowStatus.ARCHIVED,
         },
-        ["row_status"]
+        ["row_status"],
       );
     } catch (error: any) {
       console.error(error);
@@ -148,11 +150,11 @@ const MemoView: React.FC<Props> = (props: Props) => {
   };
 
   const handleCopyMemoId = () => {
-    copy(String(memo.id));
+    copy(memo.name);
     toast.success("Copied to clipboard!");
   };
 
-  const handleMemoContentClick = async (e: React.MouseEvent) => {
+  const handleMemoContentClick = useCallback(async (e: React.MouseEvent) => {
     const targetEl = e.target as HTMLElement;
 
     if (targetEl.tagName === "IMG") {
@@ -161,11 +163,11 @@ const MemoView: React.FC<Props> = (props: Props) => {
         showPreviewImageDialog([imgUrl], 0);
       }
     }
-  };
+  }, []);
 
   return (
     <div
-      className={`group memo-wrapper ${"memos-" + memo.id} ${memo.pinned && props.showPinnedStyle ? "pinned" : ""}`}
+      className={classNames("group memo-wrapper", "memos-" + memo.id, memo.pinned && props.showPinned ? "pinned" : "", className)}
       ref={memoContainerRef}
     >
       <div className="memo-top-wrapper mb-1">
@@ -188,7 +190,7 @@ const MemoView: React.FC<Props> = (props: Props) => {
           <span className="text-sm text-gray-400 select-none" onClick={handleGotoMemoDetailPage}>
             {displayTime}
           </span>
-          {props.showPinnedStyle && memo.pinned && (
+          {props.showPinned && memo.pinned && (
             <>
               <Icon.Dot className="w-4 h-auto text-gray-400 dark:text-zinc-400" />
               <Tooltip title={"Pinned"} placement="top">
@@ -216,10 +218,12 @@ const MemoView: React.FC<Props> = (props: Props) => {
               </span>
               <div className="more-action-btns-wrapper">
                 <div className="more-action-btns-container min-w-[6em]">
-                  <span className="btn" onClick={handleTogglePinMemoBtnClick}>
-                    {memo.pinned ? <Icon.BookmarkMinus className="w-4 h-auto mr-2" /> : <Icon.BookmarkPlus className="w-4 h-auto mr-2" />}
-                    {memo.pinned ? t("common.unpin") : t("common.pin")}
-                  </span>
+                  {props.showPinned && (
+                    <span className="btn" onClick={handleTogglePinMemoBtnClick}>
+                      {memo.pinned ? <Icon.BookmarkMinus className="w-4 h-auto mr-2" /> : <Icon.BookmarkPlus className="w-4 h-auto mr-2" />}
+                      {memo.pinned ? t("common.unpin") : t("common.pin")}
+                    </span>
+                  )}
                   <span className="btn" onClick={handleEditMemoClick}>
                     <Icon.Edit3 className="w-4 h-auto mr-2" />
                     {t("common.edit")}
@@ -242,10 +246,10 @@ const MemoView: React.FC<Props> = (props: Props) => {
                     {t("common.delete")}
                   </span>
                   <Divider className="!my-1" />
-                  <div className="w-full px-3 text-xs text-gray-400">
-                    <span className="cursor-pointer" onClick={handleCopyMemoId}>
-                      ID: <span className="font-mono">{memo.id}</span>
-                    </span>
+                  <div className="w-full pl-3 pr-2 text-xs text-gray-400">
+                    <div className="font-mono max-w-20 cursor-pointer truncate" onClick={handleCopyMemoId}>
+                      ID: {memo.name}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -254,7 +258,7 @@ const MemoView: React.FC<Props> = (props: Props) => {
         </div>
       </div>
       <MemoContent memoId={memo.id} nodes={memo.nodes} readonly={readonly} onClick={handleMemoContentClick} />
-      <MemoResourceListView resourceList={memo.resources} />
+      <MemoResourceListView resources={memo.resources} />
       <MemoRelationListView memo={memo} relationList={referenceRelations} />
     </div>
   );

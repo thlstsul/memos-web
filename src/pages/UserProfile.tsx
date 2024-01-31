@@ -1,14 +1,16 @@
 import { Button } from "@mui/joy";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useParams } from "react-router-dom";
 import Empty from "@/components/Empty";
 import Icon from "@/components/Icon";
+import MemoFilter from "@/components/MemoFilter";
 import MemoView from "@/components/MemoView";
 import MobileHeader from "@/components/MobileHeader";
 import UserAvatar from "@/components/UserAvatar";
 import { DEFAULT_MEMO_LIMIT } from "@/helpers/consts";
 import { getTimeStampByDate } from "@/helpers/datetime";
+import useFilterWithUrlParams from "@/hooks/useFilterWithUrlParams";
 import useLoading from "@/hooks/useLoading";
 import { useMemoList, useMemoStore, useUserStore } from "@/store/v1";
 import { User } from "@/types/proto/api/v2/user_service";
@@ -23,7 +25,8 @@ const UserProfile = () => {
   const memoStore = useMemoStore();
   const memoList = useMemoList();
   const [isRequesting, setIsRequesting] = useState(true);
-  const [isComplete, setIsComplete] = useState(false);
+  const nextPageTokenRef = useRef<string | undefined>(undefined);
+  const { tag: tagQuery, text: textQuery } = useFilterWithUrlParams();
   const sortedMemos = memoList.value
     .sort((a, b) => getTimeStampByDate(b.displayTime) - getTimeStampByDate(a.displayTime))
     .sort((a, b) => Number(b.pinned) - Number(a.pinned));
@@ -51,9 +54,10 @@ const UserProfile = () => {
       return;
     }
 
+    nextPageTokenRef.current = undefined;
     memoList.reset();
     fetchMemos();
-  }, [user]);
+  }, [user, tagQuery, textQuery]);
 
   const fetchMemos = async () => {
     if (!user) {
@@ -61,14 +65,24 @@ const UserProfile = () => {
     }
 
     const filters = [`creator == "${user.name}"`, `row_status == "NORMAL"`, `order_by_pinned == true`];
+    const contentSearch: string[] = [];
+    if (tagQuery) {
+      contentSearch.push(JSON.stringify(`#${tagQuery}`));
+    }
+    if (textQuery) {
+      contentSearch.push(JSON.stringify(textQuery));
+    }
+    if (contentSearch.length > 0) {
+      filters.push(`content_search == [${contentSearch.join(", ")}]`);
+    }
     setIsRequesting(true);
     const data = await memoStore.fetchMemos({
+      pageSize: DEFAULT_MEMO_LIMIT,
       filter: filters.join(" && "),
-      limit: DEFAULT_MEMO_LIMIT,
-      offset: memoList.size(),
+      pageToken: nextPageTokenRef.current,
     });
     setIsRequesting(false);
-    setIsComplete(data.length < DEFAULT_MEMO_LIMIT);
+    nextPageTokenRef.current = data.nextPageToken;
   };
 
   return (
@@ -91,14 +105,16 @@ const UserProfile = () => {
                   <p className="text-3xl text-black leading-none opacity-80 dark:text-gray-200">{user?.nickname}</p>
                 </div>
               </div>
+              <MemoFilter className="px-2 pb-3" />
               {sortedMemos.map((memo) => (
-                <MemoView key={memo.id} memo={memo} showVisibility showPinnedStyle showParent />
+                <MemoView key={`${memo.id}-${memo.displayTime}`} memo={memo} showVisibility showPinned />
               ))}
               {isRequesting ? (
-                <div className="flex flex-col justify-start items-center w-full my-4">
-                  <p className="text-sm text-gray-400 italic">{t("memo.fetching-data")}</p>
+                <div className="flex flex-row justify-center items-center w-full my-4 text-gray-400">
+                  <Icon.Loader className="w-4 h-auto animate-spin mr-1" />
+                  <p className="text-sm italic">{t("memo.fetching-data")}</p>
                 </div>
-              ) : isComplete ? (
+              ) : !nextPageTokenRef.current ? (
                 sortedMemos.length === 0 && (
                   <div className="w-full mt-12 mb-8 flex flex-col justify-center items-center italic">
                     <Empty />

@@ -5,6 +5,7 @@ import {
   BoldNode,
   CodeBlockNode,
   CodeNode,
+  EmbeddedContentNode,
   EscapingCharacterNode,
   HeadingNode,
   HighlightNode,
@@ -17,7 +18,11 @@ import {
   NodeType,
   OrderedListNode,
   ParagraphNode,
+  ReferencedContentNode,
   StrikethroughNode,
+  SubscriptNode,
+  SuperscriptNode,
+  TableNode,
   TagNode,
   TaskListNode,
   TextNode,
@@ -28,6 +33,7 @@ import Bold from "./Bold";
 import BoldItalic from "./BoldItalic";
 import Code from "./Code";
 import CodeBlock from "./CodeBlock";
+import EmbeddedContent from "./EmbeddedContent";
 import EscapingCharacter from "./EscapingCharacter";
 import Heading from "./Heading";
 import Highlight from "./Highlight";
@@ -39,7 +45,11 @@ import Link from "./Link";
 import Math from "./Math";
 import OrderedList from "./OrderedList";
 import Paragraph from "./Paragraph";
+import ReferencedContent from "./ReferencedContent";
 import Strikethrough from "./Strikethrough";
+import Subscript from "./Subscript";
+import Superscript from "./Superscript";
+import Table from "./Table";
 import Tag from "./Tag";
 import TaskList from "./TaskList";
 import Text from "./Text";
@@ -72,6 +82,10 @@ const Renderer: React.FC<Props> = ({ index, node }: Props) => {
       return <TaskList index={index} {...(node.taskListNode as TaskListNode)} />;
     case NodeType.MATH_BLOCK:
       return <Math {...(node.mathBlockNode as MathNode)} block={true} />;
+    case NodeType.TABLE:
+      return <Table {...(node.tableNode as TableNode)} />;
+    case NodeType.EMBEDDED_CONTENT:
+      return <EmbeddedContent {...(node.embeddedContentNode as EmbeddedContentNode)} />;
     case NodeType.TEXT:
       return <Text {...(node.textNode as TextNode)} />;
     case NodeType.BOLD:
@@ -98,6 +112,12 @@ const Renderer: React.FC<Props> = ({ index, node }: Props) => {
       return <Highlight {...(node.highlightNode as HighlightNode)} />;
     case NodeType.ESCAPING_CHARACTER:
       return <EscapingCharacter {...(node.escapingCharacterNode as EscapingCharacterNode)} />;
+    case NodeType.SUBSCRIPT:
+      return <Subscript {...(node.subscriptNode as SubscriptNode)} />;
+    case NodeType.SUPERSCRIPT:
+      return <Superscript {...(node.superscriptNode as SuperscriptNode)} />;
+    case NodeType.REFERENCED_CONTENT:
+      return <ReferencedContent {...(node.referencedContentNode as ReferencedContentNode)} />;
     default:
       return null;
   }

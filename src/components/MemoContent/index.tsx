@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { useMemoStore } from "@/store/v1";
 import { Node, NodeType } from "@/types/proto/api/v2/markdown_service";
@@ -9,12 +9,16 @@ interface Props {
   nodes: Node[];
   memoId?: number;
   readonly?: boolean;
+  disableFilter?: boolean;
+  // embeddedMemos is a set of memo resource names that are embedded in the current memo.
+  // This is used to prevent infinite loops when a memo embeds itself.
+  embeddedMemos?: Set<string>;
   className?: string;
   onClick?: (e: React.MouseEvent) => void;
 }
 
 const MemoContent: React.FC<Props> = (props: Props) => {
-  const { className, memoId, nodes, onClick } = props;
+  const { className, memoId, nodes, embeddedMemos, onClick } = props;
   const currentUser = useCurrentUser();
   const memoStore = useMemoStore();
   const memoContentContainerRef = useRef<HTMLDivElement>(null);
@@ -35,6 +39,8 @@ const MemoContent: React.FC<Props> = (props: Props) => {
         nodes,
         memoId,
         readonly: !allowEdit,
+        disableFilter: props.disableFilter,
+        embeddedMemos: embeddedMemos || new Set(),
       }}
     >
       <div className={`w-full flex flex-col justify-start items-start text-gray-800 dark:text-gray-300 ${className || ""}`}>
@@ -59,4 +65,4 @@ const MemoContent: React.FC<Props> = (props: Props) => {
   );
 };
 
-export default MemoContent;
+export default memo(MemoContent);

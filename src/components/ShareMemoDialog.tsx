@@ -70,7 +70,7 @@ const ShareMemoDialog: React.FC<Props> = (props: Props) => {
   };
 
   const handleCopyLinkBtnClick = () => {
-    copy(`${window.location.origin}/m/${memo.id}`);
+    copy(`${window.location.origin}/m/${memo.name}`);
     toast.success(t("message.succeed-copy-link"));
   };
 
@@ -112,8 +112,8 @@ const ShareMemoDialog: React.FC<Props> = (props: Props) => {
           >
             <span className="w-full px-6 pt-5 pb-2 text-sm text-gray-500">{getDateTimeString(memo.displayTime)}</span>
             <div className="w-full px-6 text-base pb-4">
-              <MemoContent memoId={memo.id} nodes={memo.nodes} readonly={true} />
-              <MemoResourceListView resourceList={memo.resources} />
+              <MemoContent memoId={memo.id} nodes={memo.nodes} readonly={true} disableFilter />
+              <MemoResourceListView resources={memo.resources} />
             </div>
             <div className="flex flex-row justify-between items-center w-full bg-gray-100 dark:bg-zinc-900 py-4 px-6">
               <div className="flex flex-row justify-start items-center">
@@ -140,6 +140,6 @@ export default function showShareMemoDialog(memo: Memo): void {
       dialogName: "share-memo-dialog",
     },
     ShareMemoDialog,
-    { memo }
+    { memo },
   );
 }

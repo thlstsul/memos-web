@@ -18,7 +18,6 @@ const PreferencesSection = () => {
   const t = useTranslate();
   const globalStore = useGlobalStore();
   const userStore = useUserStore();
-  const { appearance, locale } = globalStore.state;
   const setting = userStore.userSetting as UserSetting;
   const [telegramUserId, setTelegramUserId] = useState<string>(setting.telegramUserId);
 
@@ -27,7 +26,7 @@ const PreferencesSection = () => {
       {
         locale,
       },
-      ["locale"]
+      ["locale"],
     );
     globalStore.setLocale(locale);
   };
@@ -37,7 +36,7 @@ const PreferencesSection = () => {
       {
         appearance,
       },
-      ["appearance"]
+      ["appearance"],
     );
     globalStore.setAppearance(appearance);
   };
@@ -47,7 +46,7 @@ const PreferencesSection = () => {
       {
         memoVisibility: value,
       },
-      ["memo_visibility"]
+      ["memo_visibility"],
     );
   };
 
@@ -57,7 +56,7 @@ const PreferencesSection = () => {
         {
           telegramUserId: telegramUserId,
         },
-        ["telegram_user_id"]
+        ["telegram_user_id"],
       );
       toast.success(t("message.update-succeed"));
     } catch (error: any) {
@@ -75,11 +74,11 @@ const PreferencesSection = () => {
       <p className="font-medium text-gray-700 dark:text-gray-500">{t("common.basic")}</p>
       <div className="w-full flex flex-row justify-between items-center">
         <span>{t("common.language")}</span>
-        <LocaleSelect value={locale} onChange={handleLocaleSelectChange} />
+        <LocaleSelect value={setting.locale} onChange={handleLocaleSelectChange} />
       </div>
       <div className="w-full flex flex-row justify-between items-center">
         <span>{t("setting.preference-section.theme")}</span>
-        <AppearanceSelect value={appearance} onChange={handleAppearanceSelectChange} />
+        <AppearanceSelect value={setting.appearance as Appearance} onChange={handleAppearanceSelectChange} />
       </div>
       <p className="font-medium text-gray-700 dark:text-gray-500">{t("setting.preference")}</p>
       <div className="w-full flex flex-row justify-between items-center">

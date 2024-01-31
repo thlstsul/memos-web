@@ -1,7 +1,7 @@
 import { Button, IconButton, Input } from "@mui/joy";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-import { getNormalizedTimeString, getUnixTime } from "@/helpers/datetime";
+import { getNormalizedTimeString } from "@/helpers/datetime";
 import { useMemoStore } from "@/store/v1";
 import { useTranslate } from "@/utils/i18n";
 import { generateDialog } from "./Dialog";
@@ -40,19 +40,13 @@ const ChangeMemoCreatedTsDialog: React.FC<Props> = (props: Props) => {
   };
 
   const handleSaveBtnClick = async () => {
-    const nowTs = getUnixTime();
-    if (getUnixTime(createdAt) > nowTs) {
-      toast.error(t("message.invalid-created-datetime"));
-      return;
-    }
-
     try {
       await memoStore.updateMemo(
         {
           id: memoId,
           createTime: new Date(createdAt),
         },
-        ["created_ts"]
+        ["created_ts"],
       );
       toast.success(t("message.memo-updated-datetime"));
       handleCloseBtnClick();
@@ -104,7 +98,7 @@ function showChangeMemoCreatedTsDialog(memoId: number) {
     ChangeMemoCreatedTsDialog,
     {
       memoId,
-    }
+    },
   );
 }
 
