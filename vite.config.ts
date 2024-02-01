@@ -1,4 +1,5 @@
 import react from "@vitejs/plugin-react";
+import viteCompression from 'vite-plugin-compression';
 import { resolve } from "path";
 import { defineConfig } from "vite";
 
@@ -10,7 +11,7 @@ if (process.env.DEV_PROXY_SERVER && process.env.DEV_PROXY_SERVER.length > 0) {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), viteCompression({ algorithm: "brotliCompress" })],
   server: {
     host: "0.0.0.0",
     port: 3001,
