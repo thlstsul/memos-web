@@ -1,10 +1,16 @@
-import { IconButton } from "@mui/joy";
 import classNames from "classnames";
 import copy from "copy-to-clipboard";
 import hljs from "highlight.js";
 import toast from "react-hot-toast";
 import Icon from "../Icon";
+import MermaidBlock from "./MermaidBlock";
 import { BaseProps } from "./types";
+
+// Special languages that are rendered differently.
+enum SpecialLanguage {
+  HTML = "__html",
+  MERMAID = "mermaid",
+}
 
 interface Props extends BaseProps {
   language: string;
@@ -12,19 +18,23 @@ interface Props extends BaseProps {
 }
 
 const CodeBlock: React.FC<Props> = ({ language, content }: Props) => {
-  const formatedLanguage = language.toLowerCase() || "plaintext";
-  let highlightedCode = hljs.highlightAuto(content).value;
-
+  const formatedLanguage = (language || "").toLowerCase() || "text";
   // Users can set Markdown code blocks as `__html` to render HTML directly.
-  if (formatedLanguage === "__html") {
-    return <div className="w-full !my-2" dangerouslySetInnerHTML={{ __html: content }} />;
+  if (formatedLanguage === SpecialLanguage.HTML) {
+    return <div className="w-full overflow-auto !my-2" dangerouslySetInnerHTML={{ __html: content }} />;
+  } else if (formatedLanguage === SpecialLanguage.MERMAID) {
+    return <MermaidBlock content={content} />;
   }
 
+  let highlightedCode = content;
   try {
-    const temp = hljs.highlight(content, {
-      language: formatedLanguage,
-    }).value;
-    highlightedCode = temp;
+    const lang = hljs.getLanguage(formatedLanguage);
+    if (lang) {
+      const temp = hljs.highlight(content, {
+        language: formatedLanguage,
+      }).value;
+      highlightedCode = temp;
+    }
   } catch (error) {
     // Skip error and use default highlighted code.
   }
@@ -35,22 +45,19 @@ const CodeBlock: React.FC<Props> = ({ language, content }: Props) => {
   };
 
   return (
-    <pre className="w-full my-1 p-3 rounded bg-gray-100 dark:bg-zinc-700 whitespace-pre-wrap relative">
-      <IconButton
-        size="sm"
-        className="!absolute top-0.5 right-0.5 opacity-50"
-        sx={{
-          "--IconButton-size": "24px",
-        }}
-        onClick={handleCopyButtonClick}
-      >
-        <Icon.Copy className="w-4 h-auto" />
-      </IconButton>
-      <code
-        className={classNames(`language-${formatedLanguage}`, "block text-sm")}
-        dangerouslySetInnerHTML={{ __html: highlightedCode }}
-      ></code>
-    </pre>
+    <div className="w-full my-1 bg-amber-100 border-l-4 border-amber-400 rounded overflow-clip hover:shadow dark:bg-zinc-600 dark:border-zinc-400">
+      <div className="w-full px-2 py-1 flex flex-row justify-between items-center text-amber-500 dark:text-zinc-400">
+        <span className="text-sm font-mono">{formatedLanguage}</span>
+        <Icon.Copy className="w-4 h-auto cursor-pointer hover:opacity-80" onClick={handleCopyButtonClick} />
+      </div>
+
+      <pre className="w-full p-2 bg-amber-50 dark:bg-zinc-700 whitespace-pre-wrap relative">
+        <code
+          className={classNames(`language-${formatedLanguage}`, "block text-sm leading-5")}
+          dangerouslySetInnerHTML={{ __html: highlightedCode }}
+        ></code>
+      </pre>
+    </div>
   );
 };
 

@@ -1,6 +1,9 @@
 import axios from "axios";
 import { Resource } from "@/types/proto/api/v2/resource_service";
 
+axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || "";
+axios.defaults.withCredentials = true;
+
 export function getSystemStatus() {
   return axios.get<SystemStatus>("/api/v1/status");
 }
@@ -11,33 +14,6 @@ export function getSystemSetting() {
 
 export function upsertSystemSetting(systemSetting: SystemSetting) {
   return axios.post<SystemSetting>("/api/v1/system/setting", systemSetting);
-}
-
-export function signin(username: string, password: string, remember: boolean) {
-  return axios.post<User>("/api/v1/auth/signin", {
-    username,
-    password,
-    remember,
-  });
-}
-
-export function signinWithSSO(identityProviderId: IdentityProviderId, code: string, redirectUri: string) {
-  return axios.post<User>("/api/v1/auth/signin/sso", {
-    identityProviderId,
-    code,
-    redirectUri,
-  });
-}
-
-export function signup(username: string, password: string) {
-  return axios.post<User>("/api/v1/auth/signup", {
-    username,
-    password,
-  });
-}
-
-export function signout() {
-  return axios.post("/api/v1/auth/signout");
 }
 
 export function createResourceWithBlob(formData: FormData) {

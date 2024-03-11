@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Link, useParams } from "react-router-dom";
 import Icon from "@/components/Icon";
+import MemoActionMenu from "@/components/MemoActionMenu";
 import MemoContent from "@/components/MemoContent";
 import MemoEditor from "@/components/MemoEditor";
 import showMemoEditorDialog from "@/components/MemoEditor/MemoEditorDialog";
@@ -101,12 +102,26 @@ const MemoDetail = () => {
 
   const handleCopyLinkBtnClick = () => {
     copy(`${window.location.origin}/m/${memo.name}`);
-    toast.success(t("message.succeed-copy-link"));
+    if (memo.visibility !== Visibility.PUBLIC) {
+      toast.success(t("message.succeed-copy-link-not-public"));
+    } else {
+      toast.success(t("message.succeed-copy-link"));
+    }
   };
 
   const handleCommentCreated = async (commentId: number) => {
     await memoStore.getOrFetchMemoById(commentId);
     await memoStore.getOrFetchMemoById(memo.id, { skipCache: true });
+  };
+
+  const handleMemoArchived = () => {
+    navigateTo("/archived");
+    toast.success("Memo archived");
+  };
+
+  const handleMemoDeleted = () => {
+    navigateTo("/");
+    toast.success("Memo deleted");
   };
 
   return (
@@ -137,10 +152,10 @@ const MemoDetail = () => {
               </Link>
             </div>
           )}
-          <MemoContent memoId={memo.id} nodes={memo.nodes} readonly={readonly} />
+          <MemoContent key={`${memo.id}-${memo.updateTime}`} memoId={memo.id} content={memo.content} readonly={readonly} />
           <MemoResourceListView resources={memo.resources} />
-          <MemoRelationListView memo={memo} relationList={referenceRelations} />
-          <div className="w-full mt-3 flex flex-row justify-between items-center gap-2">
+          <MemoRelationListView memo={memo} relations={referenceRelations} />
+          <div className="w-full mt-3 select-none flex flex-row justify-between items-center gap-2">
             <div className="flex flex-row justify-start items-center">
               {!readonly && (
                 <Select
@@ -176,14 +191,26 @@ const MemoDetail = () => {
                 </IconButton>
               </Tooltip>
               <Tooltip title={"Share"} placement="top">
-                <IconButton size="sm" onClick={() => showShareMemoDialog(memo)}>
+                <IconButton size="sm" onClick={() => showShareMemoDialog(memo.id)}>
                   <Icon.Share className="w-4 h-auto text-gray-600 dark:text-gray-400" />
                 </IconButton>
               </Tooltip>
+              {!readonly && (
+                <MemoActionMenu
+                  className="ml-1"
+                  memo={memo}
+                  hiddenActions={["pin", "edit", "share"]}
+                  onArchived={handleMemoArchived}
+                  onDeleted={handleMemoDeleted}
+                />
+              )}
             </div>
           </div>
         </div>
         <div className="pt-8 pb-16 w-full">
+          <h2 id="comments" className="sr-only">
+            Comments
+          </h2>
           <div className="relative mx-auto flex-grow w-full min-h-full flex flex-col justify-start items-start gap-y-1">
             {comments.length === 0 ? (
               <div className="w-full flex flex-col justify-center items-center py-6 mb-2">

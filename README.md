@@ -1,1 +1,1 @@
-# memos web v0.19.0
+# The frontend of Memos v0.20.1

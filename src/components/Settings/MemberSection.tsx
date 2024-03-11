@@ -1,4 +1,4 @@
-import { Button, Dropdown, Input, Menu, MenuButton, Radio, RadioGroup } from "@mui/joy";
+import { Button, Dropdown, Input, Menu, MenuButton, MenuItem, Radio, RadioGroup } from "@mui/joy";
 import { sortBy } from "lodash-es";
 import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -64,7 +64,7 @@ const MemberSection = () => {
       ...state,
       creatingUser: {
         ...state.creatingUser,
-        role: Number(event.target.value) as User_Role,
+        role: event.target.value as User_Role,
       },
     });
   };
@@ -147,13 +147,13 @@ const MemberSection = () => {
   return (
     <div className="w-full flex flex-col gap-2 pt-2 pb-4">
       <p className="font-medium text-gray-700 dark:text-gray-500">{t("setting.member-section.create-a-member")}</p>
-      <div className="w-full flex flex-col justify-start items-start gap-2">
+      <div className="w-auto flex flex-col justify-start items-start gap-2 border rounded-md py-2 px-3 dark:border-zinc-700">
         <div className="flex flex-col justify-start items-start gap-1">
-          <span className="text-sm">{t("common.username")}</span>
+          <span>{t("common.username")}</span>
           <Input type="text" placeholder={t("common.username")} value={state.creatingUser.username} onChange={handleUsernameInputChange} />
         </div>
         <div className="flex flex-col justify-start items-start gap-1">
-          <span className="text-sm">{t("common.password")}</span>
+          <span>{t("common.password")}</span>
           <Input
             type="password"
             placeholder={t("common.password")}
@@ -162,8 +162,8 @@ const MemberSection = () => {
           />
         </div>
         <div className="flex flex-col justify-start items-start gap-1">
-          <span className="text-sm">{t("common.role")}</span>
-          <RadioGroup size="sm" orientation="horizontal" defaultValue={User_Role.USER} onChange={handleUserRoleInputChange}>
+          <span>{t("common.role")}</span>
+          <RadioGroup orientation="horizontal" defaultValue={User_Role.USER} onChange={handleUserRoleInputChange}>
             <Radio value={User_Role.USER} label="User" />
             <Radio value={User_Role.ADMIN} label="Admin" />
           </RadioGroup>
@@ -217,34 +217,16 @@ const MemberSection = () => {
                         <MenuButton size="sm">
                           <Icon.MoreVertical className="w-4 h-auto" />
                         </MenuButton>
-                        <Menu>
-                          <button
-                            className="w-full text-left text-sm whitespace-nowrap leading-6 py-1 px-3 cursor-pointer rounded hover:bg-gray-100 dark:hover:bg-zinc-600"
-                            onClick={() => handleChangePasswordClick(user)}
-                          >
+                        <Menu placement="bottom-end" size="sm">
+                          <MenuItem onClick={() => handleChangePasswordClick(user)}>
                             {t("setting.account-section.change-password")}
-                          </button>
+                          </MenuItem>
                           {user.rowStatus === RowStatus.ACTIVE ? (
-                            <button
-                              className="w-full text-left text-sm leading-6 py-1 px-3 cursor-pointer rounded hover:bg-gray-100 dark:hover:bg-zinc-600"
-                              onClick={() => handleArchiveUserClick(user)}
-                            >
-                              {t("setting.member-section.archive-member")}
-                            </button>
+                            <MenuItem onClick={() => handleArchiveUserClick(user)}>{t("setting.member-section.archive-member")}</MenuItem>
                           ) : (
                             <>
-                              <button
-                                className="w-full text-left text-sm leading-6 py-1 px-3 cursor-pointer rounded hover:bg-gray-100 dark:hover:bg-zinc-600"
-                                onClick={() => handleRestoreUserClick(user)}
-                              >
-                                {t("common.restore")}
-                              </button>
-                              <button
-                                className="w-full text-left text-sm leading-6 py-1 px-3 cursor-pointer rounded text-red-600 hover:bg-gray-100 dark:hover:bg-zinc-600"
-                                onClick={() => handleDeleteUserClick(user)}
-                              >
-                                {t("setting.member-section.delete-member")}
-                              </button>
+                              <MenuItem onClick={() => handleRestoreUserClick(user)}>{t("common.restore")}</MenuItem>
+                              <MenuItem onClick={() => handleDeleteUserClick(user)}>{t("setting.member-section.delete-member")}</MenuItem>
                             </>
                           )}
                         </Menu>
