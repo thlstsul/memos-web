@@ -9,7 +9,7 @@ import MemoEditor from "@/components/MemoEditor";
 import MemoFilter from "@/components/MemoFilter";
 import MemoView from "@/components/MemoView";
 import MobileHeader from "@/components/MobileHeader";
-import { DEFAULT_MEMO_LIMIT } from "@/helpers/consts";
+import { DEFAULT_LIST_MEMOS_PAGE_SIZE } from "@/helpers/consts";
 import { getTimeStampByDate } from "@/helpers/datetime";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import useFilterWithUrlParams from "@/hooks/useFilterWithUrlParams";
@@ -52,7 +52,7 @@ const Home = () => {
     }
     setIsRequesting(true);
     const data = await memoStore.fetchMemos({
-      pageSize: DEFAULT_MEMO_LIMIT,
+      pageSize: DEFAULT_LIST_MEMOS_PAGE_SIZE,
       filter: filters.join(" && "),
       pageToken: nextPageTokenRef.current,
     });
@@ -70,10 +70,10 @@ const Home = () => {
       <div className={classNames("w-full flex flex-row justify-start items-start px-4 sm:px-6 gap-4")}>
         <div className={classNames(md ? "w-[calc(100%-15rem)]" : "w-full")}>
           <MemoEditor className="mb-2" cacheKey="home-memo-editor" />
-          <div className="flex flex-col justify-start items-start w-full max-w-full pb-28">
+          <div className="flex flex-col justify-start items-start w-full max-w-full">
             <MemoFilter className="px-2 pb-2" />
             {sortedMemos.map((memo) => (
-              <MemoView key={`${memo.id}-${memo.displayTime}`} memo={memo} showVisibility showPinned />
+              <MemoView key={`${memo.id}-${memo.updateTime}`} memo={memo} showVisibility showPinned />
             ))}
             {isRequesting ? (
               <div className="flex flex-row justify-center items-center w-full my-4 text-gray-400">

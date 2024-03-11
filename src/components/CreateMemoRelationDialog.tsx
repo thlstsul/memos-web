@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import useDebounce from "react-use/lib/useDebounce";
 import { memoServiceClient } from "@/grpcweb";
-import { DEFAULT_MEMO_LIMIT } from "@/helpers/consts";
+import { DEFAULT_LIST_MEMOS_PAGE_SIZE } from "@/helpers/consts";
 import { getDateTimeString } from "@/helpers/datetime";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { Memo } from "@/types/proto/api/v2/memo_service";
@@ -12,7 +12,7 @@ import { generateDialog } from "./Dialog";
 import Icon from "./Icon";
 
 interface Props extends DialogProps {
-  onConfirm: (memoIdList: number[], embedded?: boolean) => void;
+  onConfirm: (memos: Memo[], embedded?: boolean) => void;
 }
 
 const CreateMemoRelationDialog: React.FC<Props> = (props: Props) => {
@@ -35,7 +35,7 @@ const CreateMemoRelationDialog: React.FC<Props> = (props: Props) => {
           filters.push(`content_search == [${JSON.stringify(searchText)}]`);
         }
         const { memos } = await memoServiceClient.listMemos({
-          pageSize: DEFAULT_MEMO_LIMIT,
+          pageSize: DEFAULT_LIST_MEMOS_PAGE_SIZE,
           filter: filters.length > 0 ? filters.join(" && ") : undefined,
         });
         setFetchedMemos(memos);
@@ -78,10 +78,7 @@ const CreateMemoRelationDialog: React.FC<Props> = (props: Props) => {
   };
 
   const handleConfirmBtnClick = async () => {
-    onConfirm(
-      selectedMemos.map((memo) => memo.id),
-      embedded,
-    );
+    onConfirm(selectedMemos, embedded);
     destroy();
   };
 

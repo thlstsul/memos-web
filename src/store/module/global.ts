@@ -1,7 +1,7 @@
 import * as api from "@/helpers/api";
 import storage from "@/helpers/storage";
 import i18n from "@/i18n";
-import { findNearestLanguageMatch } from "@/utils/i18n";
+import { findNearestMatchedLanguage } from "@/utils/i18n";
 import store, { useAppSelector } from "../";
 import { setAppearance, setGlobalState, setLocale } from "../reducer/global";
 
@@ -10,12 +10,9 @@ export const initialGlobalState = async () => {
     locale: "en" as Locale,
     appearance: "system" as Appearance,
     systemStatus: {
-      allowSignUp: false,
       disablePasswordLogin: false,
       disablePublicMemos: false,
       maxUploadSizeMiB: 0,
-      additionalStyle: "",
-      additionalScript: "",
       memoDisplayWithUpdatedTs: false,
       customizedProfile: {
         name: "Memos",
@@ -23,7 +20,6 @@ export const initialGlobalState = async () => {
         description: "",
         locale: "en",
         appearance: "system",
-        externalUrl: "",
       },
     } as SystemStatus,
   };
@@ -39,7 +35,6 @@ export const initialGlobalState = async () => {
         description: customizedProfile.description,
         locale: customizedProfile.locale || "en",
         appearance: customizedProfile.appearance || "system",
-        externalUrl: "",
       },
     };
     // Use storageLocale > userLocale > customizedProfile.locale (server's default locale)
@@ -49,7 +44,7 @@ export const initialGlobalState = async () => {
     // Otherwise, use server's default locale, set to storageLocale.
     const { locale: storageLocale, appearance: storageAppearance } = storage.get(["locale", "appearance"]);
     defaultGlobalState.locale =
-      storageLocale || defaultGlobalState.systemStatus.customizedProfile.locale || findNearestLanguageMatch(i18n.language);
+      storageLocale || defaultGlobalState.systemStatus.customizedProfile.locale || findNearestMatchedLanguage(i18n.language);
     defaultGlobalState.appearance = storageAppearance || defaultGlobalState.systemStatus.customizedProfile.appearance;
   }
   store.dispatch(setGlobalState(defaultGlobalState));
