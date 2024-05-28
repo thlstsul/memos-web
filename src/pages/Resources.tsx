@@ -1,7 +1,6 @@
 import { Divider, IconButton, Input, Tooltip } from "@mui/joy";
 import { includes } from "lodash-es";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { showCommonDialog } from "@/components/Dialog/CommonDialog";
 import Empty from "@/components/Empty";
 import Icon from "@/components/Icon";
@@ -11,28 +10,27 @@ import { resourceServiceClient } from "@/grpcweb";
 import useLoading from "@/hooks/useLoading";
 import i18n from "@/i18n";
 import { useMemoStore } from "@/store/v1";
-import { Resource } from "@/types/proto/api/v2/resource_service";
+import { Resource } from "@/types/proto/api/v1/resource_service";
 import { useTranslate } from "@/utils/i18n";
 
 function groupResourcesByDate(resources: Resource[]) {
-  const tmp_resources: Resource[] = resources.slice();
-  tmp_resources.sort((a: Resource, b: Resource) => {
-    const a_date = new Date(a.createTime as any);
-    const b_date = new Date(b.createTime as any);
-    return b_date.getTime() - a_date.getTime();
-  });
-
   const grouped = new Map<number, Resource[]>();
-  tmp_resources.forEach((item) => {
-    const date = new Date(item.createTime as any);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const timestamp = Date.UTC(year, month - 1, 1);
-    if (!grouped.has(timestamp)) {
-      grouped.set(timestamp, []);
-    }
-    grouped.get(timestamp)?.push(item);
-  });
+  resources
+    .sort((a: Resource, b: Resource) => {
+      const a_date = new Date(a.createTime as any);
+      const b_date = new Date(b.createTime as any);
+      return b_date.getTime() - a_date.getTime();
+    })
+    .forEach((item) => {
+      const date = new Date(item.createTime as any);
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const timestamp = Date.UTC(year, month - 1, 1);
+      if (!grouped.has(timestamp)) {
+        grouped.set(timestamp, []);
+      }
+      grouped.get(timestamp)?.push(item);
+    });
   return grouped;
 }
 
@@ -48,15 +46,15 @@ const Resources = () => {
   });
   const memoStore = useMemoStore();
   const [resources, setResources] = useState<Resource[]>([]);
-  const filteredResources = resources.filter((resource: any) => includes(resource.filename, state.searchQuery));
-  const groupedResources = groupResourcesByDate(filteredResources.filter((resource: any) => resource.memoId));
-  const unusedResources = filteredResources.filter((resource: any) => !resource.memoId);
+  const filteredResources = resources.filter((resource) => includes(resource.filename, state.searchQuery));
+  const groupedResources = groupResourcesByDate(filteredResources.filter((resource) => resource.memo));
+  const unusedResources = filteredResources.filter((resource) => !resource.memo);
 
   useEffect(() => {
     resourceServiceClient.listResources({}).then(({ resources }) => {
       setResources(resources);
       loadingState.setFinish();
-      Promise.all(resources.map((resource: any) => (resource.memoId ? memoStore.getOrFetchMemoById(resource.memoId) : null)));
+      Promise.all(resources.map((resource) => (resource.memo ? memoStore.getOrFetchMemoByName(resource.memo) : null)));
     });
   }, []);
 
@@ -68,9 +66,9 @@ const Resources = () => {
       dialogName: "delete-unused-resources-dialog",
       onConfirm: async () => {
         for (const resource of unusedResources) {
-          await resourceServiceClient.deleteResource({ id: resource.id });
+          await resourceServiceClient.deleteResource({ name: resource.name });
         }
-        setResources(resources.filter((resource) => resource.memoId));
+        setResources(resources.filter((resource) => resource.memo));
       },
     });
   };
@@ -119,23 +117,13 @@ const Resources = () => {
                           </div>
                           <div className="w-full max-w-[calc(100%-4rem)] sm:max-w-[calc(100%-6rem)] flex flex-row justify-start items-start gap-4 flex-wrap">
                             {resources.map((resource) => {
-                              const relatedMemo = resource.memoId ? memoStore.getMemoById(resource.memoId) : null;
                               return (
-                                <div key={resource.id} className="w-24 sm:w-32 h-auto flex flex-col justify-start items-start">
+                                <div key={resource.name} className="w-24 sm:w-32 h-auto flex flex-col justify-start items-start">
                                   <div className="w-24 h-24 flex justify-center items-center sm:w-32 sm:h-32 border dark:border-zinc-900 overflow-clip rounded-xl cursor-pointer hover:shadow hover:opacity-80">
                                     <ResourceIcon resource={resource} strokeWidth={0.5} />
                                   </div>
                                   <div className="w-full max-w-full flex flex-row justify-between items-center mt-1 px-1">
                                     <p className="text-xs shrink text-gray-400 truncate">{resource.filename}</p>
-                                    {relatedMemo && (
-                                      <Link
-                                        className="shrink-0 text-xs ml-1 text-gray-400 hover:underline hover:text-blue-600"
-                                        to={`/m/${relatedMemo.name}`}
-                                        target="_blank"
-                                      >
-                                        #{relatedMemo.id}
-                                      </Link>
-                                    )}
                                   </div>
                                 </div>
                               );
@@ -162,7 +150,7 @@ const Resources = () => {
                             </div>
                             {unusedResources.map((resource) => {
                               return (
-                                <div key={resource.id} className="w-24 sm:w-32 h-auto flex flex-col justify-start items-start">
+                                <div key={resource.name} className="w-24 sm:w-32 h-auto flex flex-col justify-start items-start">
                                   <div className="w-24 h-24 flex justify-center items-center sm:w-32 sm:h-32 border dark:border-zinc-900 overflow-clip rounded-xl cursor-pointer hover:shadow hover:opacity-80">
                                     <ResourceIcon resource={resource} strokeWidth={0.5} />
                                   </div>

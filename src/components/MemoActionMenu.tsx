@@ -1,35 +1,37 @@
-import { Divider, Dropdown, Menu, MenuButton, MenuItem } from "@mui/joy";
-import classNames from "classnames";
+import { Dropdown, Menu, MenuButton, MenuItem } from "@mui/joy";
+import clsx from "clsx";
 import copy from "copy-to-clipboard";
 import toast from "react-hot-toast";
+import { useLocation } from "react-router-dom";
 import Icon from "@/components/Icon";
+import useNavigateTo from "@/hooks/useNavigateTo";
 import { useMemoStore } from "@/store/v1";
-import { RowStatus } from "@/types/proto/api/v2/common";
-import { Memo } from "@/types/proto/api/v2/memo_service";
+import { RowStatus } from "@/types/proto/api/v1/common";
+import { Memo } from "@/types/proto/api/v1/memo_service";
 import { useTranslate } from "@/utils/i18n";
 import { showCommonDialog } from "./Dialog/CommonDialog";
 import showMemoEditorDialog from "./MemoEditor/MemoEditorDialog";
-import showShareMemoDialog from "./ShareMemoDialog";
 
 interface Props {
   memo: Memo;
   className?: string;
   hiddenActions?: ("edit" | "archive" | "delete" | "share" | "pin")[];
-  onArchived?: () => void;
-  onDeleted?: () => void;
 }
 
 const MemoActionMenu = (props: Props) => {
   const { memo, hiddenActions } = props;
   const t = useTranslate();
+  const location = useLocation();
+  const navigateTo = useNavigateTo();
   const memoStore = useMemoStore();
+  const isInMemoDetailPage = location.pathname.startsWith(`/m/${memo.uid}`);
 
   const handleTogglePinMemoBtnClick = async () => {
     try {
       if (memo.pinned) {
         await memoStore.updateMemo(
           {
-            id: memo.id,
+            name: memo.name,
             pinned: false,
           },
           ["pinned"],
@@ -37,7 +39,7 @@ const MemoActionMenu = (props: Props) => {
       } else {
         await memoStore.updateMemo(
           {
-            id: memo.id,
+            name: memo.name,
             pinned: true,
           },
           ["pinned"],
@@ -50,27 +52,46 @@ const MemoActionMenu = (props: Props) => {
 
   const handleEditMemoClick = () => {
     showMemoEditorDialog({
-      memoId: memo.id,
-      cacheKey: `${memo.id}-${memo.updateTime}`,
+      memoName: memo.name,
+      cacheKey: `${memo.name}-${memo.displayTime}`,
     });
   };
 
-  const handleArchiveMemoClick = async () => {
+  const handleToggleMemoStatusClick = async () => {
     try {
-      await memoStore.updateMemo(
-        {
-          id: memo.id,
-          rowStatus: RowStatus.ARCHIVED,
-        },
-        ["row_status"],
-      );
+      if (memo.rowStatus === RowStatus.ARCHIVED) {
+        await memoStore.updateMemo(
+          {
+            name: memo.name,
+            rowStatus: RowStatus.ACTIVE,
+          },
+          ["row_status"],
+        );
+        toast(t("message.restored-successfully"));
+      } else {
+        await memoStore.updateMemo(
+          {
+            name: memo.name,
+            rowStatus: RowStatus.ARCHIVED,
+          },
+          ["row_status"],
+        );
+        toast.success(t("message.archived-successfully"));
+      }
     } catch (error: any) {
       console.error(error);
       toast.error(error.response.data.message);
+      return;
     }
-    if (props.onArchived) {
-      props.onArchived();
+
+    if (isInMemoDetailPage) {
+      memo.rowStatus === RowStatus.ARCHIVED ? navigateTo("/") : navigateTo("/archived");
     }
+  };
+
+  const handleCopyLink = () => {
+    copy(`${window.location.origin}/m/${memo.uid}`);
+    toast.success(t("message.succeed-copy-link"));
   };
 
   const handleDeleteMemoClick = async () => {
@@ -80,23 +101,19 @@ const MemoActionMenu = (props: Props) => {
       style: "danger",
       dialogName: "delete-memo-dialog",
       onConfirm: async () => {
-        await memoStore.deleteMemo(memo.id);
-        if (props.onDeleted) {
-          props.onDeleted();
+        await memoStore.deleteMemo(memo.name);
+        toast.success(t("message.deleted-successfully"));
+        if (isInMemoDetailPage) {
+          navigateTo("/");
         }
       },
     });
   };
 
-  const handleCopyMemoId = () => {
-    copy(memo.name);
-    toast.success("Copied to clipboard!");
-  };
-
   return (
     <Dropdown>
       <MenuButton slots={{ root: "div" }}>
-        <span className={classNames("flex justify-center items-center rounded-full hover:opacity-70", props.className)}>
+        <span className={clsx("flex justify-center items-center rounded-full hover:opacity-70", props.className)}>
           <Icon.MoreVertical className="w-4 h-4 mx-auto text-gray-500 dark:text-gray-400" />
         </span>
       </MenuButton>
@@ -114,25 +131,19 @@ const MemoActionMenu = (props: Props) => {
           </MenuItem>
         )}
         {!hiddenActions?.includes("share") && (
-          <MenuItem onClick={() => showShareMemoDialog(memo.id)}>
-            <Icon.Share className="w-4 h-auto" />
-            {t("common.share")}
+          <MenuItem onClick={handleCopyLink}>
+            <Icon.Copy className="w-4 h-auto" />
+            {t("memo.copy-link")}
           </MenuItem>
         )}
-        <MenuItem color="warning" onClick={handleArchiveMemoClick}>
-          <Icon.Archive className="w-4 h-auto" />
-          {t("common.archive")}
+        <MenuItem color="warning" onClick={handleToggleMemoStatusClick}>
+          {memo.rowStatus === RowStatus.ARCHIVED ? <Icon.ArchiveRestore className="w-4 h-auto" /> : <Icon.Archive className="w-4 h-auto" />}
+          {memo.rowStatus === RowStatus.ARCHIVED ? t("common.restore") : t("common.archive")}
         </MenuItem>
         <MenuItem color="danger" onClick={handleDeleteMemoClick}>
           <Icon.Trash className="w-4 h-auto" />
           {t("common.delete")}
         </MenuItem>
-        <Divider className="!my-1" />
-        <div className="-mt-0.5 pl-2 pr-2 text-xs text-gray-400">
-          <div className="mt-1 font-mono max-w-20 cursor-pointer truncate" onClick={handleCopyMemoId}>
-            ID: {memo.name}
-          </div>
-        </div>
       </Menu>
     </Dropdown>
   );

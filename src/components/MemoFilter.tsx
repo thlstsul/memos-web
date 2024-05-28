@@ -1,4 +1,4 @@
-import classNames from "classnames";
+import clsx from "clsx";
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useFilterStore } from "@/store/module";
@@ -27,7 +27,7 @@ const MemoFilter = (props: Props) => {
 
   return (
     <div
-      className={classNames(
+      className={clsx(
         `w-full flex flex-row justify-start items-start flex-wrap gap-2 text-sm leading-7 dark:text-gray-400`,
         props.className,
       )}
@@ -45,7 +45,7 @@ const MemoFilter = (props: Props) => {
           filterStore.setTagFilter(undefined);
         }}
       >
-        <Icon.Tag className="w-4 h-auto mr-1 text-gray-500 dark:text-gray-400" /> {tagQuery}
+        <Icon.Hash className="w-4 h-auto mr-1 text-gray-500 dark:text-gray-400" /> {tagQuery}
         <Icon.X className="w-4 h-auto ml-1 opacity-40" />
       </div>
       <div

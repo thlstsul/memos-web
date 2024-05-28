@@ -5,7 +5,7 @@ import MemoCommentMessage from "@/components/Inbox/MemoCommentMessage";
 import VersionUpdateMessage from "@/components/Inbox/VersionUpdateMessage";
 import MobileHeader from "@/components/MobileHeader";
 import { useInboxStore } from "@/store/v1";
-import { Inbox_Status, Inbox_Type } from "@/types/proto/api/v2/inbox_service";
+import { Inbox_Status, Inbox_Type } from "@/types/proto/api/v1/inbox_service";
 import { useTranslate } from "@/utils/i18n";
 
 const Inboxes = () => {
@@ -42,9 +42,9 @@ const Inboxes = () => {
             )}
             <div className="flex flex-col justify-start items-start w-full mt-4 gap-4">
               {inboxes.map((inbox) => {
-                if (inbox.type === Inbox_Type.TYPE_MEMO_COMMENT) {
+                if (inbox.type === Inbox_Type.MEMO_COMMENT) {
                   return <MemoCommentMessage key={`${inbox.name}-${inbox.status}`} inbox={inbox} />;
-                } else if (inbox.type === Inbox_Type.TYPE_VERSION_UPDATE) {
+                } else if (inbox.type === Inbox_Type.VERSION_UPDATE) {
                   return <VersionUpdateMessage key={`${inbox.name}-${inbox.status}`} inbox={inbox} />;
                 }
                 return undefined;

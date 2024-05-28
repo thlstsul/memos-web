@@ -1,4 +1,4 @@
-import classNames from "classnames";
+import clsx from "clsx";
 import { useEffect } from "react";
 import MemoResourceListView from "@/components/MemoResourceListView";
 import useLoading from "@/hooks/useLoading";
@@ -42,7 +42,7 @@ const EmbeddedResource = ({ resourceId, params: paramsStr }: Props) => {
   const params = new URLSearchParams(paramsStr);
 
   useEffect(() => {
-    resourceStore.getOrFetchResourceByName(resourceId).finally(() => loadingState.setFinish());
+    resourceStore.searchResources(`uid == ${resourceId}`).finally(() => loadingState.setFinish());
   }, [resourceId]);
 
   if (loadingState.isLoading) {
@@ -53,7 +53,7 @@ const EmbeddedResource = ({ resourceId, params: paramsStr }: Props) => {
   }
 
   return (
-    <div className={classNames("max-w-full", getAdditionalClassNameWithParams(params))}>
+    <div className={clsx("max-w-full", getAdditionalClassNameWithParams(params))}>
       <MemoResourceListView resources={[resource]} />
     </div>
   );

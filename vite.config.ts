@@ -20,11 +20,11 @@ export default defineConfig({
         target: devProxyServer,
         xfwd: true,
       },
-      "^/memos.api.v2": {
+      "^/memos.api.v1": {
         target: devProxyServer,
         xfwd: true,
       },
-      "^/o/": {
+      "^/file": {
         target: devProxyServer,
         xfwd: true,
       },

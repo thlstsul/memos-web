@@ -1,9 +1,8 @@
 import { Button } from "@mui/joy";
-import classNames from "classnames";
-import { useEffect, useRef, useState } from "react";
+import clsx from "clsx";
+import { useEffect, useState } from "react";
 import Empty from "@/components/Empty";
-import HomeSidebar from "@/components/HomeSidebar";
-import HomeSidebarDrawer from "@/components/HomeSidebarDrawer";
+import { HomeSidebar, HomeSidebarDrawer } from "@/components/HomeSidebar";
 import Icon from "@/components/Icon";
 import MemoEditor from "@/components/MemoEditor";
 import MemoFilter from "@/components/MemoFilter";
@@ -15,7 +14,7 @@ import useCurrentUser from "@/hooks/useCurrentUser";
 import useFilterWithUrlParams from "@/hooks/useFilterWithUrlParams";
 import useResponsiveWidth from "@/hooks/useResponsiveWidth";
 import { useMemoList, useMemoStore } from "@/store/v1";
-import { RowStatus } from "@/types/proto/api/v2/common";
+import { RowStatus } from "@/types/proto/api/v1/common";
 import { useTranslate } from "@/utils/i18n";
 
 const Home = () => {
@@ -25,7 +24,7 @@ const Home = () => {
   const memoStore = useMemoStore();
   const memoList = useMemoList();
   const [isRequesting, setIsRequesting] = useState(true);
-  const nextPageTokenRef = useRef<string | undefined>(undefined);
+  const [nextPageToken, setNextPageToken] = useState<string>("");
   const { tag: tagQuery, text: textQuery } = useFilterWithUrlParams();
   const sortedMemos = memoList.value
     .filter((memo) => memo.rowStatus === RowStatus.ACTIVE)
@@ -33,31 +32,30 @@ const Home = () => {
     .sort((a, b) => Number(b.pinned) - Number(a.pinned));
 
   useEffect(() => {
-    nextPageTokenRef.current = undefined;
     memoList.reset();
-    fetchMemos();
+    fetchMemos("");
   }, [tagQuery, textQuery]);
 
-  const fetchMemos = async () => {
+  const fetchMemos = async (nextPageToken: string) => {
+    setIsRequesting(true);
     const filters = [`creator == "${user.name}"`, `row_status == "NORMAL"`, `order_by_pinned == true`];
     const contentSearch: string[] = [];
-    if (tagQuery) {
-      contentSearch.push(JSON.stringify(`#${tagQuery}`));
-    }
     if (textQuery) {
       contentSearch.push(JSON.stringify(textQuery));
     }
     if (contentSearch.length > 0) {
       filters.push(`content_search == [${contentSearch.join(", ")}]`);
     }
-    setIsRequesting(true);
-    const data = await memoStore.fetchMemos({
+    if (tagQuery) {
+      filters.push(`tag == "${tagQuery}"`);
+    }
+    const response = await memoStore.fetchMemos({
       pageSize: DEFAULT_LIST_MEMOS_PAGE_SIZE,
       filter: filters.join(" && "),
-      pageToken: nextPageTokenRef.current,
+      pageToken: nextPageToken,
     });
     setIsRequesting(false);
-    nextPageTokenRef.current = data.nextPageToken;
+    setNextPageToken(response.nextPageToken);
   };
 
   return (
@@ -67,20 +65,20 @@ const Home = () => {
           <HomeSidebarDrawer />
         </MobileHeader>
       )}
-      <div className={classNames("w-full flex flex-row justify-start items-start px-4 sm:px-6 gap-4")}>
-        <div className={classNames(md ? "w-[calc(100%-15rem)]" : "w-full")}>
+      <div className={clsx("w-full flex flex-row justify-start items-start px-4 sm:px-6 gap-4")}>
+        <div className={clsx(md ? "w-[calc(100%-15rem)]" : "w-full")}>
           <MemoEditor className="mb-2" cacheKey="home-memo-editor" />
           <div className="flex flex-col justify-start items-start w-full max-w-full">
             <MemoFilter className="px-2 pb-2" />
             {sortedMemos.map((memo) => (
-              <MemoView key={`${memo.id}-${memo.updateTime}`} memo={memo} showVisibility showPinned />
+              <MemoView key={`${memo.name}-${memo.updateTime}`} memo={memo} showVisibility showPinned />
             ))}
             {isRequesting ? (
               <div className="flex flex-row justify-center items-center w-full my-4 text-gray-400">
                 <Icon.Loader className="w-4 h-auto animate-spin mr-1" />
                 <p className="text-sm italic">{t("memo.fetching-data")}</p>
               </div>
-            ) : !nextPageTokenRef.current ? (
+            ) : !nextPageToken ? (
               sortedMemos.length === 0 && (
                 <div className="w-full mt-12 mb-8 flex flex-col justify-center items-center italic">
                   <Empty />
@@ -89,7 +87,7 @@ const Home = () => {
               )
             ) : (
               <div className="w-full flex flex-row justify-center items-center my-4">
-                <Button variant="plain" endDecorator={<Icon.ArrowDown className="w-5 h-auto" />} onClick={fetchMemos}>
+                <Button variant="plain" endDecorator={<Icon.ArrowDown className="w-5 h-auto" />} onClick={() => fetchMemos(nextPageToken)}>
                   {t("memo.fetch-more")}
                 </Button>
               </div>

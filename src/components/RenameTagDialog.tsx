@@ -1,10 +1,10 @@
 import { Button, IconButton, Input, List, ListItem } from "@mui/joy";
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
-import { tagServiceClient } from "@/grpcweb";
-import useCurrentUser from "@/hooks/useCurrentUser";
+import { memoServiceClient } from "@/grpcweb";
 import useLoading from "@/hooks/useLoading";
 import { useFilterStore } from "@/store/module";
+import { useTagStore } from "@/store/v1";
 import { useTranslate } from "@/utils/i18n";
 import { generateDialog } from "./Dialog";
 import Icon from "./Icon";
@@ -16,8 +16,8 @@ interface Props extends DialogProps {
 const RenameTagDialog: React.FC<Props> = (props: Props) => {
   const { tag, destroy } = props;
   const t = useTranslate();
+  const tagStore = useTagStore();
   const filterStore = useFilterStore();
-  const currentUser = useCurrentUser();
   const [newName, setNewName] = useState(tag);
   const requestState = useLoading(false);
 
@@ -36,13 +36,14 @@ const RenameTagDialog: React.FC<Props> = (props: Props) => {
     }
 
     try {
-      await tagServiceClient.renameTag({
-        user: currentUser.name,
-        oldName: tag,
-        newName: newName,
+      await memoServiceClient.renameMemoTag({
+        parent: "memos/-",
+        oldTag: tag,
+        newTag: newName,
       });
       toast.success("Rename tag successfully");
       filterStore.setTagFilter(newName);
+      tagStore.fetchTags(undefined, { skipCache: true });
     } catch (error: any) {
       console.error(error);
       toast.error(error.details);
@@ -75,12 +76,13 @@ const RenameTagDialog: React.FC<Props> = (props: Props) => {
               onChange={handleTagNameInputChange}
             />
           </div>
-          <List className="!leading-5" size="sm" marker="disc">
-            <ListItem>All your memos with this tag will be updated.</ListItem>
-            <ListItem>If the number of related memos is large, it will take longer and the server load will become higher.</ListItem>
+          <List size="sm" marker="disc">
+            <ListItem>
+              <p className="leading-5">All your memos with this tag will be updated.</p>
+            </ListItem>
           </List>
         </div>
-        <div className="w-full flex flex-row justify-end items-center mt-2 space-x-2">
+        <div className="w-full flex flex-row justify-end items-center space-x-2">
           <Button color="neutral" variant="plain" disabled={requestState.isLoading} loading={requestState.isLoading} onClick={destroy}>
             {t("common.cancel")}
           </Button>
