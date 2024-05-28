@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { uniqBy } from "lodash-es";
-import { Resource } from "@/types/proto/api/v2/resource_service";
+import { Resource } from "@/types/proto/api/v1/resource_service";
 
 interface State {
   resources: Resource[];
@@ -21,14 +21,14 @@ const resourceSlice = createSlice({
     upsertResources: (state, action: PayloadAction<Resource[]>) => {
       return {
         ...state,
-        resources: uniqBy([...action.payload, ...state.resources], "id"),
+        resources: uniqBy([...action.payload, ...state.resources], "name"),
       };
     },
     patchResource: (state, action: PayloadAction<Partial<Resource>>) => {
       return {
         ...state,
         resources: state.resources.map((resource) => {
-          if (resource.id === action.payload.id) {
+          if (resource.name === action.payload.name) {
             return {
               ...resource,
               ...action.payload,

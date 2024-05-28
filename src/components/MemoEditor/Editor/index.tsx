@@ -1,8 +1,12 @@
-import classNames from "classnames";
-import { forwardRef, ReactNode, useCallback, useEffect, useImperativeHandle, useRef } from "react";
+import clsx from "clsx";
+import { last } from "lodash-es";
+import { forwardRef, ReactNode, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { markdownServiceClient } from "@/grpcweb";
+import { NodeType, OrderedListNode, TaskListNode, UnorderedListNode } from "@/types/proto/api/v1/markdown_service";
 import TagSuggestions from "./TagSuggestions";
 
 export interface EditorRefActions {
+  getEditor: () => HTMLTextAreaElement | null;
   focus: FunctionType;
   scrollToCursor: FunctionType;
   insertText: (text: string, prefix?: string, suffix?: string) => void;
@@ -28,6 +32,7 @@ interface Props {
 
 const Editor = forwardRef(function Editor(props: Props, ref: React.ForwardedRef<EditorRefActions>) {
   const { className, initialContent, placeholder, onPaste, onContentChange: handleContentChangeCallback } = props;
+  const [isInIME, setIsInIME] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -43,6 +48,96 @@ const Editor = forwardRef(function Editor(props: Props, ref: React.ForwardedRef<
     }
   }, [editorRef.current?.value]);
 
+  const editorActions = {
+    getEditor: () => {
+      return editorRef.current;
+    },
+    focus: () => {
+      editorRef.current?.focus();
+    },
+    scrollToCursor: () => {
+      if (editorRef.current) {
+        editorRef.current.scrollTop = editorRef.current.scrollHeight;
+      }
+    },
+    insertText: (content = "", prefix = "", suffix = "") => {
+      if (!editorRef.current) {
+        return;
+      }
+
+      const cursorPosition = editorRef.current.selectionStart;
+      const endPosition = editorRef.current.selectionEnd;
+      const prevValue = editorRef.current.value;
+      const value =
+        prevValue.slice(0, cursorPosition) +
+        prefix +
+        (content || prevValue.slice(cursorPosition, endPosition)) +
+        suffix +
+        prevValue.slice(endPosition);
+
+      editorRef.current.value = value;
+      editorRef.current.focus();
+      editorRef.current.selectionEnd = endPosition + prefix.length + content.length;
+      handleContentChangeCallback(editorRef.current.value);
+      updateEditorHeight();
+    },
+    removeText: (start: number, length: number) => {
+      if (!editorRef.current) {
+        return;
+      }
+
+      const prevValue = editorRef.current.value;
+      const value = prevValue.slice(0, start) + prevValue.slice(start + length);
+      editorRef.current.value = value;
+      editorRef.current.focus();
+      editorRef.current.selectionEnd = start;
+      handleContentChangeCallback(editorRef.current.value);
+      updateEditorHeight();
+    },
+    setContent: (text: string) => {
+      if (editorRef.current) {
+        editorRef.current.value = text;
+        handleContentChangeCallback(editorRef.current.value);
+        updateEditorHeight();
+      }
+    },
+    getContent: (): string => {
+      return editorRef.current?.value ?? "";
+    },
+    getCursorPosition: (): number => {
+      return editorRef.current?.selectionStart ?? 0;
+    },
+    getSelectedContent: () => {
+      const start = editorRef.current?.selectionStart;
+      const end = editorRef.current?.selectionEnd;
+      return editorRef.current?.value.slice(start, end) ?? "";
+    },
+    setCursorPosition: (startPos: number, endPos?: number) => {
+      const _endPos = isNaN(endPos as number) ? startPos : (endPos as number);
+      editorRef.current?.setSelectionRange(startPos, _endPos);
+    },
+    getCursorLineNumber: () => {
+      const cursorPosition = editorRef.current?.selectionStart ?? 0;
+      const lines = editorRef.current?.value.slice(0, cursorPosition).split("\n") ?? [];
+      return lines.length - 1;
+    },
+    getLine: (lineNumber: number) => {
+      return editorRef.current?.value.split("\n")[lineNumber] ?? "";
+    },
+    setLine: (lineNumber: number, text: string) => {
+      const lines = editorRef.current?.value.split("\n") ?? [];
+      lines[lineNumber] = text;
+      if (editorRef.current) {
+        editorRef.current.value = lines.join("\n");
+        editorRef.current.focus();
+        handleContentChangeCallback(editorRef.current.value);
+        updateEditorHeight();
+      }
+    },
+  };
+
+  useImperativeHandle(ref, () => editorActions, []);
+
   const updateEditorHeight = () => {
     if (editorRef.current) {
       editorRef.current.style.height = "auto";
@@ -50,104 +145,47 @@ const Editor = forwardRef(function Editor(props: Props, ref: React.ForwardedRef<
     }
   };
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      focus: () => {
-        editorRef.current?.focus();
-      },
-      scrollToCursor: () => {
-        if (editorRef.current) {
-          editorRef.current.scrollTop = editorRef.current.scrollHeight;
-        }
-      },
-      insertText: (content = "", prefix = "", suffix = "") => {
-        if (!editorRef.current) {
-          return;
-        }
-
-        const cursorPosition = editorRef.current.selectionStart;
-        const endPosition = editorRef.current.selectionEnd;
-        const prevValue = editorRef.current.value;
-        const value =
-          prevValue.slice(0, cursorPosition) +
-          prefix +
-          (content || prevValue.slice(cursorPosition, endPosition)) +
-          suffix +
-          prevValue.slice(endPosition);
-
-        editorRef.current.value = value;
-        editorRef.current.focus();
-        editorRef.current.selectionEnd = endPosition + prefix.length + content.length;
-        handleContentChangeCallback(editorRef.current.value);
-        updateEditorHeight();
-      },
-      removeText: (start: number, length: number) => {
-        if (!editorRef.current) {
-          return;
-        }
-
-        const prevValue = editorRef.current.value;
-        const value = prevValue.slice(0, start) + prevValue.slice(start + length);
-        editorRef.current.value = value;
-        editorRef.current.focus();
-        editorRef.current.selectionEnd = start;
-        handleContentChangeCallback(editorRef.current.value);
-        updateEditorHeight();
-      },
-      setContent: (text: string) => {
-        if (editorRef.current) {
-          editorRef.current.value = text;
-          handleContentChangeCallback(editorRef.current.value);
-          updateEditorHeight();
-        }
-      },
-      getContent: (): string => {
-        return editorRef.current?.value ?? "";
-      },
-      getCursorPosition: (): number => {
-        return editorRef.current?.selectionStart ?? 0;
-      },
-      getSelectedContent: () => {
-        const start = editorRef.current?.selectionStart;
-        const end = editorRef.current?.selectionEnd;
-        return editorRef.current?.value.slice(start, end) ?? "";
-      },
-      setCursorPosition: (startPos: number, endPos?: number) => {
-        const _endPos = isNaN(endPos as number) ? startPos : (endPos as number);
-        editorRef.current?.setSelectionRange(startPos, _endPos);
-      },
-      getCursorLineNumber: () => {
-        const cursorPosition = editorRef.current?.selectionStart ?? 0;
-        const lines = editorRef.current?.value.slice(0, cursorPosition).split("\n") ?? [];
-        return lines.length - 1;
-      },
-      getLine: (lineNumber: number) => {
-        return editorRef.current?.value.split("\n")[lineNumber] ?? "";
-      },
-      setLine: (lineNumber: number, text: string) => {
-        const lines = editorRef.current?.value.split("\n") ?? [];
-        lines[lineNumber] = text;
-        if (editorRef.current) {
-          editorRef.current.value = lines.join("\n");
-          editorRef.current.focus();
-          handleContentChangeCallback(editorRef.current.value);
-          updateEditorHeight();
-        }
-      },
-    }),
-    [],
-  );
-
   const handleEditorInput = useCallback(() => {
     handleContentChangeCallback(editorRef.current?.value ?? "");
     updateEditorHeight();
   }, []);
 
+  const handleEditorKeyDown = async (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !isInIME) {
+      if (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      const cursorPosition = editorActions.getCursorPosition();
+      const prevContent = editorActions.getContent().substring(0, cursorPosition);
+      const { nodes } = await markdownServiceClient.parseMarkdown({ markdown: prevContent });
+      const lastNode = last(nodes);
+      if (!lastNode) {
+        return;
+      }
+
+      let insertText = "";
+      if (lastNode.type === NodeType.TASK_LIST) {
+        const { complete } = lastNode.taskListNode as TaskListNode;
+        insertText = complete ? "- [x] " : "- [ ] ";
+      } else if (lastNode.type === NodeType.UNORDERED_LIST) {
+        const { symbol } = lastNode.unorderedListNode as UnorderedListNode;
+        insertText = `${symbol} `;
+      } else if (lastNode.type === NodeType.ORDERED_LIST) {
+        const { number } = lastNode.orderedListNode as OrderedListNode;
+        insertText = `${Number(number) + 1}. `;
+      }
+      if (insertText) {
+        editorActions.insertText(`\n${insertText}`);
+        event.preventDefault();
+      }
+    }
+  };
+
   return (
     <div
-      className={classNames(
-        "flex flex-col justify-start items-start relative w-full h-auto max-h-[256px] bg-inherit dark:text-gray-300",
+      className={clsx(
+        "flex flex-col justify-start items-start relative w-full h-auto max-h-[50vh] bg-inherit dark:text-gray-300",
         className,
       )}
     >
@@ -158,6 +196,9 @@ const Editor = forwardRef(function Editor(props: Props, ref: React.ForwardedRef<
         ref={editorRef}
         onPaste={onPaste}
         onInput={handleEditorInput}
+        onKeyDown={handleEditorKeyDown}
+        onCompositionStart={() => setIsInIME(true)}
+        onCompositionEnd={() => setTimeout(() => setIsInIME(false))}
       ></textarea>
       <TagSuggestions editorRef={editorRef} editorActions={ref} />
     </div>

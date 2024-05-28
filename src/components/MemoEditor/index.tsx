@@ -1,42 +1,43 @@
-import { Select, Option, Button, IconButton, Divider } from "@mui/joy";
+import { Select, Option, Button, Divider } from "@mui/joy";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import useLocalStorage from "react-use/lib/useLocalStorage";
 import { memoServiceClient } from "@/grpcweb";
-import { TAB_SPACE_WIDTH, UNKNOWN_ID } from "@/helpers/consts";
+import { TAB_SPACE_WIDTH } from "@/helpers/consts";
 import { isValidUrl } from "@/helpers/utils";
 import useCurrentUser from "@/hooks/useCurrentUser";
-import { useGlobalStore, useResourceStore, useTagStore } from "@/store/module";
-import { useMemoStore, useUserStore } from "@/store/v1";
-import { MemoRelation, MemoRelation_Type } from "@/types/proto/api/v2/memo_relation_service";
-import { Memo, Visibility } from "@/types/proto/api/v2/memo_service";
-import { Resource } from "@/types/proto/api/v2/resource_service";
-import { UserSetting } from "@/types/proto/api/v2/user_service";
+import { useMemoStore, useResourceStore, useUserStore, useWorkspaceSettingStore } from "@/store/v1";
+import { MemoRelation, MemoRelation_Type } from "@/types/proto/api/v1/memo_relation_service";
+import { Memo, Visibility } from "@/types/proto/api/v1/memo_service";
+import { Resource } from "@/types/proto/api/v1/resource_service";
+import { UserSetting } from "@/types/proto/api/v1/user_service";
+import { WorkspaceMemoRelatedSetting } from "@/types/proto/api/v1/workspace_setting_service";
+import { WorkspaceSettingKey } from "@/types/proto/store/workspace_setting";
 import { useTranslate } from "@/utils/i18n";
 import { convertVisibilityFromString, convertVisibilityToString } from "@/utils/memo";
-import { extractTagsFromContent } from "@/utils/tag";
-import showCreateResourceDialog from "../CreateResourceDialog";
 import Icon from "../Icon";
 import VisibilityIcon from "../VisibilityIcon";
 import AddMemoRelationButton from "./ActionButton/AddMemoRelationButton";
 import MarkdownMenu from "./ActionButton/MarkdownMenu";
 import TagSelector from "./ActionButton/TagSelector";
+import UploadResourceButton from "./ActionButton/UploadResourceButton";
 import Editor, { EditorRefActions } from "./Editor";
 import RelationListView from "./RelationListView";
 import ResourceListView from "./ResourceListView";
 import { handleEditorKeydownWithMarkdownShortcuts, hyperlinkHighlightedText } from "./handlers";
 import { MemoEditorContext } from "./types";
 
-interface Props {
+export interface Props {
   className?: string;
-  editorClassName?: string;
   cacheKey?: string;
-  memoId?: number;
-  parentMemoId?: number;
+  placeholder?: string;
+  memoName?: string;
+  parentMemoName?: string;
   relationList?: MemoRelation[];
   autoFocus?: boolean;
-  onConfirm?: (memoId: number) => void;
+  memoPatchRef?: React.MutableRefObject<Partial<Memo>>;
+  onConfirm?: (memoName: string) => void;
 }
 
 interface State {
@@ -49,16 +50,13 @@ interface State {
 }
 
 const MemoEditor = (props: Props) => {
-  const { className, editorClassName, cacheKey, memoId, parentMemoId, autoFocus, onConfirm } = props;
-  const { i18n } = useTranslation();
+  const { className, cacheKey, memoName, parentMemoName, autoFocus, onConfirm } = props;
   const t = useTranslate();
-  const {
-    state: { systemStatus },
-  } = useGlobalStore();
+  const { i18n } = useTranslation();
+  const workspaceSettingStore = useWorkspaceSettingStore();
   const userStore = useUserStore();
   const memoStore = useMemoStore();
   const resourceStore = useResourceStore();
-  const tagStore = useTagStore();
   const currentUser = useCurrentUser();
   const [state, setState] = useState<State>({
     memoVisibility: Visibility.PRIVATE,
@@ -73,11 +71,14 @@ const MemoEditor = (props: Props) => {
   const userSetting = userStore.userSetting as UserSetting;
   const contentCacheKey = `${currentUser.name}-${cacheKey || ""}`;
   const [contentCache, setContentCache] = useLocalStorage<string>(contentCacheKey, "");
-  const referenceRelations = memoId
+  const referenceRelations = memoName
     ? state.relationList.filter(
-        (relation) => relation.memoId === memoId && relation.relatedMemoId !== memoId && relation.type === MemoRelation_Type.REFERENCE,
+        (relation) => relation.memo === memoName && relation.relatedMemo !== memoName && relation.type === MemoRelation_Type.REFERENCE,
       )
     : state.relationList.filter((relation) => relation.type === MemoRelation_Type.REFERENCE);
+  const workspaceMemoRelatedSetting =
+    workspaceSettingStore.getWorkspaceSettingByKey(WorkspaceSettingKey.MEMO_RELATED)?.memoRelatedSetting ||
+    WorkspaceMemoRelatedSetting.fromPartial({});
 
   useEffect(() => {
     editorRef.current?.setContent(contentCache || "");
@@ -91,18 +92,18 @@ const MemoEditor = (props: Props) => {
 
   useEffect(() => {
     let visibility = userSetting.memoVisibility;
-    if (systemStatus.disablePublicMemos && visibility === "PUBLIC") {
+    if (workspaceMemoRelatedSetting.disallowPublicVisible && visibility === "PUBLIC") {
       visibility = "PRIVATE";
     }
     setState((prevState) => ({
       ...prevState,
       memoVisibility: convertVisibilityFromString(visibility),
     }));
-  }, [userSetting.memoVisibility, systemStatus.disablePublicMemos]);
+  }, [userSetting.memoVisibility, workspaceMemoRelatedSetting.disallowPublicVisible]);
 
   useEffect(() => {
-    if (memoId) {
-      memoStore.getOrFetchMemoById(memoId ?? UNKNOWN_ID).then((memo) => {
+    if (memoName) {
+      memoStore.getOrFetchMemoByName(memoName).then((memo) => {
         if (memo) {
           handleEditorFocus();
           setState((prevState) => ({
@@ -117,7 +118,7 @@ const MemoEditor = (props: Props) => {
         }
       });
     }
-  }, [memoId]);
+  }, [memoName]);
 
   const handleCompositionStart = () => {
     setState((prevState) => ({
@@ -141,7 +142,7 @@ const MemoEditor = (props: Props) => {
     const isMetaKey = event.ctrlKey || event.metaKey;
     if (isMetaKey) {
       if (event.key === "Enter") {
-        handleSaveBtnClick();
+        void handleSaveBtnClick();
         return;
       }
 
@@ -167,17 +168,6 @@ const MemoEditor = (props: Props) => {
     }));
   };
 
-  const handleUploadFileBtnClick = () => {
-    showCreateResourceDialog({
-      onConfirm: (resourceList) => {
-        setState((prevState) => ({
-          ...prevState,
-          resourceList: [...prevState.resourceList, ...resourceList],
-        }));
-      },
-    });
-  };
-
   const handleSetResourceList = (resourceList: Resource[]) => {
     setState((prevState) => ({
       ...prevState,
@@ -200,21 +190,29 @@ const MemoEditor = (props: Props) => {
       };
     });
 
-    let resource = undefined;
+    const { name: filename, size, type } = file;
+    const buffer = new Uint8Array(await file.arrayBuffer());
+
     try {
-      resource = await resourceStore.createResourceWithBlob(file);
+      const resource = await resourceStore.createResource({
+        resource: Resource.fromPartial({
+          filename,
+          size,
+          type,
+          content: buffer,
+        }),
+      });
+      setState((state) => {
+        return {
+          ...state,
+          isUploadingResource: false,
+        };
+      });
+      return resource;
     } catch (error: any) {
       console.error(error);
-      toast.error(typeof error === "string" ? error : error.response.data.message);
+      toast.error(error.details);
     }
-
-    setState((state) => {
-      return {
-        ...state,
-        isUploadingResource: false,
-      };
-    });
-    return resource;
   };
 
   const uploadMultiFiles = async (files: FileList) => {
@@ -223,13 +221,13 @@ const MemoEditor = (props: Props) => {
       const resource = await handleUploadResource(file);
       if (resource) {
         uploadedResourceList.push(resource);
-        if (memoId) {
+        if (memoName) {
           await resourceStore.updateResource({
             resource: Resource.fromPartial({
-              id: resource.id,
-              memoId,
+              name: resource.name,
+              memo: memoName,
             }),
-            updateMask: ["memo_id"],
+            updateMask: ["memo"],
           });
         }
       }
@@ -286,58 +284,63 @@ const MemoEditor = (props: Props) => {
     const content = editorRef.current?.getContent() ?? "";
     try {
       // Update memo.
-      if (memoId && memoId !== UNKNOWN_ID) {
-        const prevMemo = await memoStore.getOrFetchMemoById(memoId ?? UNKNOWN_ID);
+      if (memoName) {
+        const prevMemo = await memoStore.getOrFetchMemoByName(memoName);
         if (prevMemo) {
+          const updateMask = ["content", "visibility"];
+          if (props.memoPatchRef?.current?.displayTime) {
+            updateMask.push("display_ts");
+          }
           const memo = await memoStore.updateMemo(
             {
-              id: prevMemo.id,
+              name: prevMemo.name,
               content,
               visibility: state.memoVisibility,
+              ...props.memoPatchRef?.current,
             },
-            ["content", "visibility"],
+            updateMask,
           );
           await memoServiceClient.setMemoResources({
-            id: memo.id,
+            name: memo.name,
             resources: state.resourceList,
           });
           await memoServiceClient.setMemoRelations({
-            id: memo.id,
+            name: memo.name,
             relations: state.relationList,
           });
-          await memoStore.getOrFetchMemoById(memo.id, { skipCache: true });
+          await memoStore.getOrFetchMemoByName(memo.name, { skipCache: true });
           if (onConfirm) {
-            onConfirm(memo.id);
+            onConfirm(memo.name);
           }
         }
       } else {
         // Create memo or memo comment.
-        const request = !parentMemoId
+        const request = !parentMemoName
           ? memoStore.createMemo({
               content,
               visibility: state.memoVisibility,
             })
           : memoServiceClient
               .createMemoComment({
-                id: parentMemoId,
-                create: {
+                name: parentMemoName,
+                comment: {
                   content,
                   visibility: state.memoVisibility,
                 },
               })
-              .then(({ memo }) => memo as Memo);
+              .then((memo) => memo);
         const memo = await request;
         await memoServiceClient.setMemoResources({
-          id: memo.id,
+          name: memo.name,
           resources: state.resourceList,
         });
         await memoServiceClient.setMemoRelations({
-          id: memo.id,
+          name: memo.name,
           relations: state.relationList,
         });
-        await memoStore.getOrFetchMemoById(memo.id, { skipCache: true });
+        await memoStore.getOrFetchMemoByName(memo.name, { skipCache: true });
         if (onConfirm) {
-          onConfirm(memo.id);
+          onConfirm(memo.name);
         }
       }
       editorRef.current?.setContent("");
@@ -345,10 +348,6 @@ const MemoEditor = (props: Props) => {
       console.error(error);
       toast.error(error.details);
     }
-
-    // Batch upsert tags.
-    const tags = extractTagsFromContent(content);
-    await tagStore.batchUpsertTag(tags);
 
     setState((state) => {
       return {
@@ -366,9 +365,9 @@ const MemoEditor = (props: Props) => {
 
   const editorConfig = useMemo(
     () => ({
-      className: editorClassName ?? "",
+      className: "",
       initialContent: "",
-      placeholder: t("editor.placeholder"),
+      placeholder: props.placeholder ?? t("editor.any-thoughts"),
       onContentChange: handleContentChange,
       onPaste: handlePasteEvent,
     }),
@@ -380,14 +379,21 @@ const MemoEditor = (props: Props) => {
   return (
     <MemoEditorContext.Provider
       value={{
+        resourceList: state.resourceList,
         relationList: state.relationList,
+        setResourceList: (resourceList: Resource[]) => {
+          setState((prevState) => ({
+            ...prevState,
+            resourceList,
+          }));
+        },
         setRelationList: (relationList: MemoRelation[]) => {
           setState((prevState) => ({
             ...prevState,
             relationList,
           }));
         },
-        memoId,
+        memoName,
       }}
     >
       <div
@@ -405,12 +411,10 @@ const MemoEditor = (props: Props) => {
         <ResourceListView resourceList={state.resourceList} setResourceList={handleSetResourceList} />
         <RelationListView relationList={referenceRelations} setRelationList={handleSetRelationList} />
         <div className="relative w-full flex flex-row justify-between items-center pt-2" onFocus={(e) => e.stopPropagation()}>
-          <div className="flex flex-row justify-start items-center opacity-80">
+          <div className="flex flex-row justify-start items-center opacity-80 dark:opacity-60">
             <TagSelector editorRef={editorRef} />
             <MarkdownMenu editorRef={editorRef} />
-            <IconButton size="sm" onClick={handleUploadFileBtnClick}>
-              <Icon.Image className="w-5 h-5 mx-auto" />
-            </IconButton>
+            <UploadResourceButton />
             <AddMemoRelationButton editorRef={editorRef} />
           </div>
         </div>
@@ -436,6 +440,7 @@ const MemoEditor = (props: Props) => {
           </div>
           <div className="shrink-0 flex flex-row justify-end items-center">
             <Button
+              className="!font-normal"
               disabled={!allowSave}
               loading={state.isRequesting}
               endDecorator={<Icon.Send className="w-4 h-auto" />}
