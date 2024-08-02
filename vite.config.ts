@@ -28,14 +28,6 @@ export default defineConfig({
         target: devProxyServer,
         xfwd: true,
       },
-      "^/u/.+/rss.xml": {
-        target: devProxyServer,
-        xfwd: true,
-      },
-      "^/explore/rss.xml": {
-        target: devProxyServer,
-        xfwd: true,
-      },
     },
   },
   resolve: {
