@@ -2,6 +2,7 @@ import react from "@vitejs/plugin-react";
 import viteCompression from 'vite-plugin-compression';
 import { resolve } from "path";
 import { defineConfig } from "vite";
+import { VitePWA } from 'vite-plugin-pwa';
 
 let devProxyServer = "http://localhost:8081";
 if (process.env.DEV_PROXY_SERVER && process.env.DEV_PROXY_SERVER.length > 0) {
@@ -11,7 +12,16 @@ if (process.env.DEV_PROXY_SERVER && process.env.DEV_PROXY_SERVER.length > 0) {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), viteCompression({ algorithm: "brotliCompress", filter: /\.(js|mjs|json|css|html|wasm)$/i })],
+  plugins: [
+    react(),
+    viteCompression({ algorithm: "brotliCompress", filter: /\.(js|mjs|json|css|html|wasm)$/i }),
+    VitePWA({
+      registerType: 'autoUpdate',
+      workbox: {
+        maximumFileSizeToCacheInBytes: 4000000
+      }
+    })
+  ],
   server: {
     host: "0.0.0.0",
     port: 3001,
