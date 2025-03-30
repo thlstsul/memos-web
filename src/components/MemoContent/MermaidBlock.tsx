@@ -1,4 +1,4 @@
-import mermaid from "mermaid";
+import { useColorScheme } from "@mui/joy";
 import { useEffect, useRef } from "react";
 
 interface Props {
@@ -6,19 +6,23 @@ interface Props {
 }
 
 const MermaidBlock: React.FC<Props> = ({ content }: Props) => {
+  const { mode: colorMode } = useColorScheme();
   const mermaidDockBlock = useRef<null>(null);
-  mermaid.initialize({ startOnLoad: false, theme: "default" });
 
   useEffect(() => {
-    if (!mermaidDockBlock.current) {
-      return;
-    }
+    // Dynamically import mermaid to ensure compatibility with Vite
+    const initializeMermaid = async () => {
+      const mermaid = (await import("mermaid")).default;
+      mermaid.initialize({ startOnLoad: false, theme: colorMode == "dark" ? "dark" : "default" });
+      if (mermaidDockBlock.current) {
+        mermaid.run({
+          nodes: [mermaidDockBlock.current],
+        });
+      }
+    };
 
-    // Render mermaid when mounted.
-    mermaid.run({
-      nodes: [mermaidDockBlock.current],
-    });
-  });
+    initializeMermaid();
+  }, [content]);
 
   return (
     <pre ref={mermaidDockBlock} className="w-full p-2 whitespace-pre-wrap relative">

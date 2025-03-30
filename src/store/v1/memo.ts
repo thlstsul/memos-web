@@ -9,25 +9,55 @@ interface State {
   // It should be update when any state change.
   stateId: string;
   memoMapByName: Record<string, Memo>;
+  currentRequest: AbortController | null;
 }
 
 const getDefaultState = (): State => ({
   stateId: uniqueId(),
   memoMapByName: {},
+  currentRequest: null,
 });
 
 export const useMemoStore = create(
   combine(getDefaultState(), (set, get) => ({
     setState: (state: State) => set(state),
     getState: () => get(),
+    updateStateId: () => set({ stateId: uniqueId() }),
     fetchMemos: async (request: Partial<ListMemosRequest>) => {
-      const { memos, nextPageToken } = await memoServiceClient.listMemos(request);
-      const memoMap = { ...get().memoMapByName };
-      for (const memo of memos) {
-        memoMap[memo.name] = memo;
+      const currentRequest = get().currentRequest;
+      if (currentRequest) {
+        currentRequest.abort();
       }
-      set({ stateId: uniqueId(), memoMapByName: memoMap });
-      return { memos, nextPageToken };
+
+      const controller = new AbortController();
+      set({ currentRequest: controller });
+
+      try {
+        const { memos, nextPageToken } = await memoServiceClient.listMemos(
+          {
+            ...request,
+          },
+          { signal: controller.signal },
+        );
+
+        if (!controller.signal.aborted) {
+          const memoMap = request.pageToken ? { ...get().memoMapByName } : {};
+          for (const memo of memos) {
+            memoMap[memo.name] = memo;
+          }
+          set({ stateId: uniqueId(), memoMapByName: memoMap });
+          return { memos, nextPageToken };
+        }
+      } catch (error: any) {
+        if (error.name === "AbortError") {
+          return;
+        }
+        throw error;
+      } finally {
+        if (get().currentRequest === controller) {
+          set({ currentRequest: null });
+        }
+      }
     },
     getOrFetchMemoByName: async (name: string, options?: { skipCache?: boolean; skipStore?: boolean }) => {
       const memoMap = get().memoMapByName;
@@ -47,19 +77,6 @@ export const useMemoStore = create(
     },
     getMemoByName: (name: string) => {
       return get().memoMapByName[name];
-    },
-    fetchMemoByUid: async (uid: string) => {
-      const memo = await memoServiceClient.getMemoByUid({
-        uid,
-      });
-      const memoMap = get().memoMapByName;
-      memoMap[memo.name] = memo;
-      set({ stateId: uniqueId(), memoMapByName: memoMap });
-      return memo;
-    },
-    getMemoByUid: (uid: string) => {
-      const memoMap = get().memoMapByName;
-      return Object.values(memoMap).find((memo) => memo.uid === uid);
     },
     createMemo: async (request: CreateMemoRequest) => {
       const memo = await memoServiceClient.createMemo(request);
@@ -96,7 +113,7 @@ export const useMemoList = () => {
   const memos = Object.values(memoStore.getState().memoMapByName);
 
   const reset = () => {
-    memoStore.setState({ stateId: uniqueId(), memoMapByName: {} });
+    memoStore.updateStateId();
   };
 
   const size = () => {

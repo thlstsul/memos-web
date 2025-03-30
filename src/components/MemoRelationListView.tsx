@@ -1,43 +1,28 @@
-import clsx from "clsx";
-import { DotIcon, LinkIcon, MilestoneIcon } from "lucide-react";
+import { LinkIcon, MilestoneIcon } from "lucide-react";
 import { memo, useState } from "react";
 import { Link } from "react-router-dom";
-import useAsyncEffect from "@/hooks/useAsyncEffect";
-import { useMemoStore } from "@/store/v1";
-import { MemoRelation } from "@/types/proto/api/v1/memo_relation_service";
-import { Memo } from "@/types/proto/api/v1/memo_service";
+import { Memo, MemoRelation } from "@/types/proto/api/v1/memo_service";
+import { cn } from "@/utils";
+import { useTranslate } from "@/utils/i18n";
 
 interface Props {
   memo: Memo;
   relations: MemoRelation[];
+  parentPage?: string;
 }
 
 const MemoRelationListView = (props: Props) => {
-  const { memo, relations: relationList } = props;
-  const memoStore = useMemoStore();
-  const [referencingMemoList, setReferencingMemoList] = useState<Memo[]>([]);
-  const [referencedMemoList, setReferencedMemoList] = useState<Memo[]>([]);
-  const [selectedTab, setSelectedTab] = useState<"referencing" | "referenced">("referencing");
-
-  useAsyncEffect(async () => {
-    const referencingMemoList = await Promise.all(
-      relationList
-        .filter((relation) => relation.memo === memo.name && relation.relatedMemo !== memo.name)
-        .map((relation) => memoStore.getOrFetchMemoByName(relation.relatedMemo, { skipStore: true })),
-    );
-    setReferencingMemoList(referencingMemoList);
-    const referencedMemoList = await Promise.all(
-      relationList
-        .filter((relation) => relation.memo !== memo.name && relation.relatedMemo === memo.name)
-        .map((relation) => memoStore.getOrFetchMemoByName(relation.memo, { skipStore: true })),
-    );
-    setReferencedMemoList(referencedMemoList);
-    if (referencingMemoList.length === 0) {
-      setSelectedTab("referenced");
-    } else {
-      setSelectedTab("referencing");
-    }
-  }, [memo.name, relationList]);
+  const t = useTranslate();
+  const { memo, relations: relationList, parentPage } = props;
+  const referencingMemoList = relationList
+    .filter((relation) => relation.memo?.name === memo.name && relation.relatedMemo?.name !== memo.name)
+    .map((relation) => relation.relatedMemo!);
+  const referencedMemoList = relationList
+    .filter((relation) => relation.memo?.name !== memo.name && relation.relatedMemo?.name === memo.name)
+    .map((relation) => relation.memo!);
+  const [selectedTab, setSelectedTab] = useState<"referencing" | "referenced">(
+    referencingMemoList.length === 0 ? "referenced" : "referencing",
+  );
 
   if (referencingMemoList.length + referencedMemoList.length === 0) {
     return null;
@@ -48,27 +33,27 @@ const MemoRelationListView = (props: Props) => {
       <div className="w-full flex flex-row justify-start items-center mb-1 gap-3 opacity-60">
         {referencingMemoList.length > 0 && (
           <button
-            className={clsx(
+            className={cn(
               "w-auto flex flex-row justify-start items-center text-xs gap-0.5 text-gray-500",
               selectedTab === "referencing" && "text-gray-800 dark:text-gray-400",
             )}
             onClick={() => setSelectedTab("referencing")}
           >
             <LinkIcon className="w-3 h-auto shrink-0 opacity-70" />
-            <span>Referencing</span>
+            <span>{t("common.referencing")}</span>
             <span className="opacity-80">({referencingMemoList.length})</span>
           </button>
         )}
         {referencedMemoList.length > 0 && (
           <button
-            className={clsx(
+            className={cn(
               "w-auto flex flex-row justify-start items-center text-xs gap-0.5 text-gray-500",
               selectedTab === "referenced" && "text-gray-800 dark:text-gray-400",
             )}
             onClick={() => setSelectedTab("referenced")}
           >
             <MilestoneIcon className="w-3 h-auto shrink-0 opacity-70" />
-            <span>Referenced by</span>
+            <span>{t("common.referenced-by")}</span>
             <span className="opacity-80">({referencedMemoList.length})</span>
           </button>
         )}
@@ -81,9 +66,14 @@ const MemoRelationListView = (props: Props) => {
                 key={memo.name}
                 className="w-auto max-w-full flex flex-row justify-start items-center text-sm leading-5 text-gray-600 dark:text-gray-400 dark:border-zinc-700 dark:bg-zinc-900 hover:underline"
                 to={`/m/${memo.uid}`}
-                unstable_viewTransition
+                viewTransition
+                state={{
+                  from: parentPage,
+                }}
               >
-                <DotIcon className="shrink-0 w-4 h-auto opacity-40" />
+                <span className="text-xs opacity-60 leading-4 border font-mono px-1 rounded-full mr-1 dark:border-zinc-700">
+                  {memo.uid.slice(0, 6)}
+                </span>
                 <span className="truncate">{memo.snippet}</span>
               </Link>
             );
@@ -98,9 +88,14 @@ const MemoRelationListView = (props: Props) => {
                 key={memo.name}
                 className="w-auto max-w-full flex flex-row justify-start items-center text-sm leading-5 text-gray-600 dark:text-gray-400 dark:border-zinc-700 dark:bg-zinc-900 hover:underline"
                 to={`/m/${memo.uid}`}
-                unstable_viewTransition
+                viewTransition
+                state={{
+                  from: parentPage,
+                }}
               >
-                <DotIcon className="shrink-0 w-4 h-auto opacity-40" />
+                <span className="text-xs opacity-60 leading-4 border font-mono px-1 rounded-full mr-1 dark:border-zinc-700">
+                  {memo.uid.slice(0, 6)}
+                </span>
                 <span className="truncate">{memo.snippet}</span>
               </Link>
             );

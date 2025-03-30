@@ -1,11 +1,15 @@
 export const workspaceSettingNamePrefix = "settings/";
 export const userNamePrefix = "users/";
-export const MemoNamePrefix = "memos/";
+export const memoNamePrefix = "memos/";
 export const identityProviderNamePrefix = "identityProviders/";
 export const activityNamePrefix = "activities/";
 
+export const extractUserIdFromName = (name: string) => {
+  return parseInt(name.split(userNamePrefix).pop() || "", 10);
+};
+
 export const extractMemoIdFromName = (name: string) => {
-  return parseInt(name.split(MemoNamePrefix).pop() || "", 10);
+  return name.split(memoNamePrefix).pop() || "";
 };
 
 export const extractIdentityProviderIdFromName = (name: string) => {

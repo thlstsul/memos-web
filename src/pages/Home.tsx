@@ -1,47 +1,21 @@
-import { Button } from "@mui/joy";
-import clsx from "clsx";
 import dayjs from "dayjs";
-import { ArrowDownIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import Empty from "@/components/Empty";
-import { HomeSidebar, HomeSidebarDrawer } from "@/components/HomeSidebar";
-import MemoEditor from "@/components/MemoEditor";
-import MemoFilters from "@/components/MemoFilters";
+import { observer } from "mobx-react-lite";
+import { useMemo } from "react";
 import MemoView from "@/components/MemoView";
-import MobileHeader from "@/components/MobileHeader";
-import { DEFAULT_LIST_MEMOS_PAGE_SIZE } from "@/helpers/consts";
+import PagedMemoList from "@/components/PagedMemoList";
 import useCurrentUser from "@/hooks/useCurrentUser";
-import useResponsiveWidth from "@/hooks/useResponsiveWidth";
-import { useMemoFilterStore, useMemoList, useMemoStore } from "@/store/v1";
-import { RowStatus } from "@/types/proto/api/v1/common";
-import { useTranslate } from "@/utils/i18n";
+import { useMemoFilterStore } from "@/store/v1";
+import { viewStore, userStore } from "@/store/v2";
+import { Direction, State } from "@/types/proto/api/v1/common";
+import { Memo } from "@/types/proto/api/v1/memo_service";
 
-const Home = () => {
-  const t = useTranslate();
-  const { md } = useResponsiveWidth();
+const Home = observer(() => {
   const user = useCurrentUser();
-  const memoStore = useMemoStore();
-  const memoList = useMemoList();
   const memoFilterStore = useMemoFilterStore();
-  const [isRequesting, setIsRequesting] = useState(true);
-  const [nextPageToken, setNextPageToken] = useState<string>("");
-  const sortedMemos = memoList.value
-    .filter((memo) => memo.rowStatus === RowStatus.ACTIVE)
-    .sort((a, b) =>
-      memoFilterStore.orderByTimeAsc
-        ? dayjs(a.displayTime).unix() - dayjs(b.displayTime).unix()
-        : dayjs(b.displayTime).unix() - dayjs(a.displayTime).unix(),
-    )
-    .sort((a, b) => Number(b.pinned) - Number(a.pinned));
+  const selectedShortcut = userStore.state.shortcuts.find((shortcut) => shortcut.id === memoFilterStore.shortcut);
 
-  useEffect(() => {
-    memoList.reset();
-    fetchMemos("");
-  }, [memoFilterStore.filters]);
-
-  const fetchMemos = async (nextPageToken: string) => {
-    setIsRequesting(true);
-    const filters = [`creator == "${user.name}"`, `row_status == "NORMAL"`, `order_by_pinned == true`];
+  const memoListFilter = useMemo(() => {
+    const conditions = [];
     const contentSearch: string[] = [];
     const tagSearch: string[] = [];
     for (const filter of memoFilterStore.filters) {
@@ -49,80 +23,50 @@ const Home = () => {
         contentSearch.push(`"${filter.value}"`);
       } else if (filter.factor === "tagSearch") {
         tagSearch.push(`"${filter.value}"`);
+      } else if (filter.factor === "pinned") {
+        conditions.push(`pinned == true`);
       } else if (filter.factor === "property.hasLink") {
-        filters.push(`has_link == true`);
+        conditions.push(`has_link == true`);
       } else if (filter.factor === "property.hasTaskList") {
-        filters.push(`has_task_list == true`);
+        conditions.push(`has_task_list == true`);
       } else if (filter.factor === "property.hasCode") {
-        filters.push(`has_code == true`);
+        conditions.push(`has_code == true`);
       } else if (filter.factor === "displayTime") {
-        const timestampAfter = new Date(filter.value).getTime() / 1000;
-        filters.push(`display_time_after == ${timestampAfter}`);
-        filters.push(`display_time_before == ${timestampAfter + 60 * 60 * 24}`);
+        const filterDate = new Date(filter.value);
+        const filterUtcTimestamp = filterDate.getTime() + filterDate.getTimezoneOffset() * 60 * 1000;
+        const timestampAfter = filterUtcTimestamp / 1000;
+        conditions.push(`display_time_after == ${timestampAfter}`);
+        conditions.push(`display_time_before == ${timestampAfter + 60 * 60 * 24}`);
       }
     }
-    if (memoFilterStore.orderByTimeAsc) {
-      filters.push(`order_by_time_asc == true`);
-    }
     if (contentSearch.length > 0) {
-      filters.push(`content_search == [${contentSearch.join(", ")}]`);
+      conditions.push(`content_search == [${contentSearch.join(", ")}]`);
     }
     if (tagSearch.length > 0) {
-      filters.push(`tag_search == [${tagSearch.join(", ")}]`);
+      conditions.push(`tag_search == [${tagSearch.join(", ")}]`);
     }
-    const response = await memoStore.fetchMemos({
-      pageSize: DEFAULT_LIST_MEMOS_PAGE_SIZE,
-      filter: filters.join(" && "),
-      pageToken: nextPageToken,
-    });
-    setIsRequesting(false);
-    setNextPageToken(response.nextPageToken);
-  };
+    return conditions.join(" && ");
+  }, [user, memoFilterStore.filters, viewStore.state.orderByTimeAsc]);
 
   return (
-    <section className="@container w-full max-w-5xl min-h-full flex flex-col justify-start items-center sm:pt-3 md:pt-6 pb-8">
-      {!md && (
-        <MobileHeader>
-          <HomeSidebarDrawer />
-        </MobileHeader>
-      )}
-      <div className={clsx("w-full flex flex-row justify-start items-start px-4 sm:px-6 gap-4")}>
-        <div className={clsx(md ? "w-[calc(100%-15rem)]" : "w-full")}>
-          <MemoEditor className="mb-2" cacheKey="home-memo-editor" />
-          <MemoFilters />
-          <div className="flex flex-col justify-start items-start w-full max-w-full">
-            {sortedMemos.map((memo) => (
-              <MemoView key={`${memo.name}-${memo.updateTime}`} memo={memo} showVisibility showPinned compact />
-            ))}
-            {nextPageToken && (
-              <div className="w-full flex flex-row justify-center items-center my-4">
-                <Button
-                  variant="plain"
-                  color="neutral"
-                  loading={isRequesting}
-                  endDecorator={<ArrowDownIcon className="w-4 h-auto" />}
-                  onClick={() => fetchMemos(nextPageToken)}
-                >
-                  {t("memo.load-more")}
-                </Button>
-              </div>
-            )}
-            {!nextPageToken && sortedMemos.length === 0 && (
-              <div className="w-full mt-12 mb-8 flex flex-col justify-center items-center italic">
-                <Empty />
-                <p className="mt-2 text-gray-600 dark:text-gray-400">{t("message.no-data")}</p>
-              </div>
-            )}
-          </div>
-        </div>
-        {md && (
-          <div className="sticky top-0 left-0 shrink-0 -mt-6 w-56 h-full">
-            <HomeSidebar className="py-6" />
-          </div>
-        )}
-      </div>
-    </section>
+    <PagedMemoList
+      renderer={(memo: Memo) => <MemoView key={`${memo.name}-${memo.displayTime}`} memo={memo} showVisibility showPinned compact />}
+      listSort={(memos: Memo[]) =>
+        memos
+          .filter((memo) => memo.state === State.NORMAL)
+          .sort((a, b) =>
+            viewStore.state.orderByTimeAsc
+              ? dayjs(a.displayTime).unix() - dayjs(b.displayTime).unix()
+              : dayjs(b.displayTime).unix() - dayjs(a.displayTime).unix(),
+          )
+          .sort((a, b) => Number(b.pinned) - Number(a.pinned))
+      }
+      owner={user.name}
+      direction={viewStore.state.orderByTimeAsc ? Direction.ASC : Direction.DESC}
+      filter={selectedShortcut?.filter || ""}
+      oldFilter={memoListFilter}
+    />
   );
-};
+});
 
 export default Home;

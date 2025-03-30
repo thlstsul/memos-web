@@ -1,10 +1,9 @@
-import clsx from "clsx";
 import copy from "copy-to-clipboard";
-import DOMPurify from "dompurify";
 import hljs from "highlight.js";
 import { CopyIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
+import { cn } from "@/utils";
 import MermaidBlock from "./MermaidBlock";
 import { BaseProps } from "./types";
 
@@ -24,13 +23,19 @@ const CodeBlock: React.FC<Props> = ({ language, content }: Props) => {
 
   // Users can set Markdown code blocks as `__html` to render HTML directly.
   if (formatedLanguage === SpecialLanguage.HTML) {
-    const purify = DOMPurify(window);
-    return <div className="w-full overflow-auto !my-2" dangerouslySetInnerHTML={{ __html: purify.sanitize(content) }} />;
+    return (
+      <div
+        className="w-full overflow-auto !my-2"
+        dangerouslySetInnerHTML={{
+          __html: content,
+        }}
+      />
+    );
   } else if (formatedLanguage === SpecialLanguage.MERMAID) {
     return <MermaidBlock content={content} />;
   }
 
-  const highlightedCode: string = useMemo(() => {
+  const highlightedCode = useMemo(() => {
     try {
       const lang = hljs.getLanguage(formatedLanguage);
       if (lang) {
@@ -42,7 +47,7 @@ const CodeBlock: React.FC<Props> = ({ language, content }: Props) => {
       // Skip error and use default highlighted code.
     }
 
-    // escape any HTML entities when rendering original content
+    // Escape any HTML entities when rendering original content.
     return Object.assign(document.createElement("span"), {
       textContent: content,
     }).innerHTML;
@@ -61,9 +66,9 @@ const CodeBlock: React.FC<Props> = ({ language, content }: Props) => {
       </div>
 
       <div className="overflow-auto">
-        <pre className={clsx("no-wrap overflow-auto", "w-full p-2 bg-amber-50 dark:bg-zinc-700 relative")}>
+        <pre className={cn("no-wrap overflow-auto", "w-full p-2 bg-amber-50 dark:bg-zinc-700 relative")}>
           <code
-            className={clsx(`language-${formatedLanguage}`, "block text-sm leading-5")}
+            className={cn(`language-${formatedLanguage}`, "block text-sm leading-5")}
             dangerouslySetInnerHTML={{ __html: highlightedCode }}
           ></code>
         </pre>

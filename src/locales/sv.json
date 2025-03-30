@@ -58,6 +58,8 @@
   },
   "memo": {
     "copy-link": "Kopiera länk",
+    "remove-completed-task-list-items": "Ta bort avklarade",
+    "remove-completed-task-list-items-confirm": "Är du säker på att du vill ta bort alla avklarade todo? (Detta är oåterkalleligt)",
     "view-detail": "Visa detaljer",
     "visibility": {
       "disabled": "Offentliga anteckningar är inaktiverade",
@@ -74,6 +76,7 @@
     "new-password-not-match": "Nya lösenord matchar inte.",
     "password-changed": "Lösenord ändrat",
     "password-not-match": "Lösenorden matchar inte.",
+    "remove-completed-task-list-items-successfully": "Borttagning avklarade todo lyckades!",
     "restored-successfully": "Återställdes framgångsrikt",
     "succeed-copy-link": "Länk kopierades framgångsrikt.",
     "update-succeed": "Uppdateras framgångsrikt",
@@ -117,8 +120,7 @@
       "create-a-service": "Skapa en tjänst",
       "delete-storage": "Ta bort lagring",
       "storage-services": "Lista över lagringstjänster",
-      "update-a-service": "Uppdatera en tjänst",
-      "warning-text": "Är du säker på att ta bort den här lagringstjänsten? DEN HÄR ÅTGÄRDEN ÄR IRREVERSIBEL❗"
+      "update-a-service": "Uppdatera en tjänst"
     },
     "system": "System",
     "system-section": {
@@ -133,6 +135,7 @@
       },
       "disable-public-memos": "Inaktivera offentliga anteckningar",
       "display-with-updated-time": "Display with updated time",
+      "removed-completed-task-list-items": "Aktivera ta bort avklarade",
       "server-name": "Server Name"
     }
   }
