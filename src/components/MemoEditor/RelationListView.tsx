@@ -1,8 +1,7 @@
 import { LinkIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useMemoStore } from "@/store/v1";
-import { MemoRelation, MemoRelation_Type } from "@/types/proto/api/v1/memo_relation_service";
-import { Memo } from "@/types/proto/api/v1/memo_service";
+import { Memo, MemoRelation, MemoRelation_Type } from "@/types/proto/api/v1/memo_service";
 
 interface Props {
   relationList: MemoRelation[];
@@ -19,7 +18,7 @@ const RelationListView = (props: Props) => {
       const requests = relationList
         .filter((relation) => relation.type === MemoRelation_Type.REFERENCE)
         .map(async (relation) => {
-          return await memoStore.getOrFetchMemoByName(relation.relatedMemo, { skipStore: true });
+          return await memoStore.getOrFetchMemoByName(relation.relatedMemo!.name, { skipStore: true });
         });
       const list = await Promise.all(requests);
       setReferencingMemoList(list);
@@ -27,7 +26,7 @@ const RelationListView = (props: Props) => {
   }, [relationList]);
 
   const handleDeleteRelation = async (memo: Memo) => {
-    setRelationList(relationList.filter((relation) => relation.relatedMemo !== memo.name));
+    setRelationList(relationList.filter((relation) => relation.relatedMemo?.name !== memo.name));
   };
 
   return (

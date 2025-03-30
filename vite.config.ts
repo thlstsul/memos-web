@@ -1,4 +1,6 @@
+import legacy from "@vitejs/plugin-legacy";
 import react from "@vitejs/plugin-react";
+import { codeInspectorPlugin } from "code-inspector-plugin";
 import viteCompression from 'vite-plugin-compression';
 import { resolve } from "path";
 import { defineConfig } from "vite";
@@ -14,6 +16,12 @@ if (process.env.DEV_PROXY_SERVER && process.env.DEV_PROXY_SERVER.length > 0) {
 export default defineConfig({
   plugins: [
     react(),
+    legacy({
+      targets: ["defaults", "not IE 11"],
+    }),
+    codeInspectorPlugin({
+      bundler: "vite",
+    }),
     viteCompression({ algorithm: "brotliCompress", filter: /\.(js|mjs|json|css|html|wasm)$/i }),
     VitePWA({
       registerType: 'autoUpdate',
@@ -43,6 +51,24 @@ export default defineConfig({
   resolve: {
     alias: {
       "@/": `${resolve(__dirname, "src")}/`,
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        entryFileNames: "assets/app.[hash].js",
+        chunkFileNames: "assets/[name].[hash].js",
+        assetFileNames: "assets/[name].[hash][extname]",
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "react-router-dom"],
+          "mui-vendor": ["@mui/joy", "@emotion/react", "@emotion/styled"],
+          "utils-vendor": ["dayjs", "lodash-es", "mobx", "mobx-react-lite"],
+          "katex-vendor": ["katex"],
+          "highlight-vendor": ["highlight.js"],
+          "mermaid-vendor": ["mermaid"],
+          "leaflet-vendor": ["leaflet", "react-leaflet"],
+        },
+      },
     },
   },
 });

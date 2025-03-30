@@ -1,8 +1,8 @@
-import clsx from "clsx";
 import { last } from "lodash-es";
 import { forwardRef, ReactNode, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { markdownServiceClient } from "@/grpcweb";
-import { NodeType, OrderedListNode, TaskListNode, UnorderedListNode } from "@/types/proto/api/v1/markdown_service";
+import { Node, NodeType, OrderedListItemNode, TaskListItemNode, UnorderedListItemNode } from "@/types/proto/api/v1/markdown_service";
+import { cn } from "@/utils";
 import TagSuggestions from "./TagSuggestions";
 
 export interface EditorRefActions {
@@ -150,6 +150,20 @@ const Editor = forwardRef(function Editor(props: Props, ref: React.ForwardedRef<
     updateEditorHeight();
   }, []);
 
+  const getLastNode = (nodes: Node[]): Node | undefined => {
+    const lastNode = last(nodes);
+    if (!lastNode) {
+      return undefined;
+    }
+    if (lastNode.type === NodeType.LIST) {
+      const children = lastNode.listNode?.children;
+      if (children) {
+        return getLastNode(children);
+      }
+    }
+    return lastNode;
+  };
+
   const handleEditorKeyDown = async (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !isInIME) {
       if (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) {
@@ -159,21 +173,25 @@ const Editor = forwardRef(function Editor(props: Props, ref: React.ForwardedRef<
       const cursorPosition = editorActions.getCursorPosition();
       const prevContent = editorActions.getContent().substring(0, cursorPosition);
       const { nodes } = await markdownServiceClient.parseMarkdown({ markdown: prevContent });
-      const lastNode = last(nodes);
+      const lastNode = getLastNode(nodes);
       if (!lastNode) {
         return;
       }
 
-      let insertText = "";
-      if (lastNode.type === NodeType.TASK_LIST) {
-        const { complete } = lastNode.taskListNode as TaskListNode;
-        insertText = complete ? "- [x] " : "- [ ] ";
-      } else if (lastNode.type === NodeType.UNORDERED_LIST) {
-        const { symbol } = lastNode.unorderedListNode as UnorderedListNode;
-        insertText = `${symbol} `;
-      } else if (lastNode.type === NodeType.ORDERED_LIST) {
-        const { number } = lastNode.orderedListNode as OrderedListNode;
-        insertText = `${Number(number) + 1}. `;
+      // Get the indentation of the previous line
+      const lines = prevContent.split("\n");
+      const lastLine = lines[lines.length - 1];
+      const indentationMatch = lastLine.match(/^\s*/);
+      let insertText = indentationMatch ? indentationMatch[0] : ""; // Keep the indentation of the previous line
+      if (lastNode.type === NodeType.TASK_LIST_ITEM) {
+        const { symbol } = lastNode.taskListItemNode as TaskListItemNode;
+        insertText += `${symbol} [ ] `;
+      } else if (lastNode.type === NodeType.UNORDERED_LIST_ITEM) {
+        const { symbol } = lastNode.unorderedListItemNode as UnorderedListItemNode;
+        insertText += `${symbol} `;
+      } else if (lastNode.type === NodeType.ORDERED_LIST_ITEM) {
+        const { number } = lastNode.orderedListItemNode as OrderedListItemNode;
+        insertText += `${Number(number) + 1}. `;
       }
       if (insertText) {
         editorActions.insertText(insertText);
@@ -183,10 +201,7 @@ const Editor = forwardRef(function Editor(props: Props, ref: React.ForwardedRef<
 
   return (
     <div
-      className={clsx(
-        "flex flex-col justify-start items-start relative w-full h-auto max-h-[50vh] bg-inherit dark:text-gray-300",
-        className,
-      )}
+      className={cn("flex flex-col justify-start items-start relative w-full h-auto max-h-[50vh] bg-inherit dark:text-gray-300", className)}
     >
       <textarea
         className="w-full h-full my-1 text-base resize-none overflow-x-hidden overflow-y-auto bg-transparent outline-none whitespace-pre-wrap word-break"

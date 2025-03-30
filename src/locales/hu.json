@@ -100,12 +100,11 @@
     "copy-link": "Hivatkozás másolása",
     "count-memos-in-date": "{{count}} jegyzet ezen a napon: {{date}}",
     "delete-confirm": "Biztosan törlöd ezt a jegyzetet? EZ A MŰVELET VÉGLEGES",
-    "delete-memo": "Jegyzet törlése",
-    "embed": "Beágyazás",
-    "fetch-more": "Több adat lekérése",
-    "fetching-data": "Adatok lekérése…",
     "no-archived-memos": "Nincsenek archivált jegyzetek.",
+    "remove-completed-task-list-items": "Töröld el a kész",
+    "remove-completed-task-list-items-confirm": "Biztos, hogy törölni akarod az összes kész feladatot? (Ez az akció visszavonhatatlan)",
     "search-placeholder": "Jegyzetek keresése",
+    "show-less": "Mutass kevesebbet",
     "show-more": "Több mutatása",
     "view-detail": "Részletek",
     "visibility": {
@@ -127,6 +126,7 @@
     "no-data": "Nem található adat.",
     "password-changed": "Jelszó megváltoztatva",
     "password-not-match": "A jelszavak nem egyeznek.",
+    "remove-completed-task-list-items-successfully": "Sikeresen eltávolítva!",
     "restored-successfully": "Sikeres visszaállítás",
     "succeed-copy-link": "Hivatkozás sikeresen másolva.",
     "update-succeed": "Sikeres frissítés",
@@ -287,6 +287,7 @@
       "enable-password-login-warning": "Ez engedélyezi a jelszavas bejelentkezést minden felhasználó számára. Csak akkor folytasd, ha szeretnéd, ha a felhasználók SSO és jelszó használatával is be tudjanak jelentkezni",
       "max-upload-size": "Maximális feltöltési méret (MiB)",
       "max-upload-size-hint": "Az ajánlott érték 32 MiB.",
+      "removed-completed-task-list-items": "Kikapcsold a kész törölését",
       "server-name": "Szerver neve"
     }
   },
@@ -297,8 +298,5 @@
     "delete-confirm": "Biztosan törlöd ezt a címkét?",
     "delete-tag": "Címke törlése",
     "no-tag-found": "Nem található címke"
-  },
-  "timeline": {
-    "title": "Idővonal"
   }
 }

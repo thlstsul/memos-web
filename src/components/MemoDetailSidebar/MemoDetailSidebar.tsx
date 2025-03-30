@@ -1,37 +1,46 @@
-import clsx from "clsx";
 import { isEqual } from "lodash-es";
 import { CheckCircleIcon, Code2Icon, HashIcon, LinkIcon } from "lucide-react";
-import { Memo, MemoProperty } from "@/types/proto/api/v1/memo_service";
+import { Memo, MemoRelation_Type, Memo_Property } from "@/types/proto/api/v1/memo_service";
+import { cn } from "@/utils";
 import { useTranslate } from "@/utils/i18n";
+import MemoRelationForceGraph from "../MemoRelationForceGraph";
 
 interface Props {
   memo: Memo;
   className?: string;
+  parentPage?: string;
 }
 
-const MemoDetailSidebar = ({ memo, className }: Props) => {
+const MemoDetailSidebar = ({ memo, className, parentPage }: Props) => {
   const t = useTranslate();
-  const property = MemoProperty.fromPartial(memo.property || {});
+  const property = Memo_Property.fromPartial(memo.property || {});
   const hasSpecialProperty = property.hasLink || property.hasTaskList || property.hasCode || property.hasIncompleteTasks;
+  const shouldShowRelationGraph = memo.relations.filter((r) => r.type === MemoRelation_Type.REFERENCE).length > 0;
 
   return (
     <aside
-      className={clsx(
-        "relative w-full h-auto max-h-screen overflow-auto hide-scrollbar flex flex-col justify-start items-start",
-        className,
-      )}
+      className={cn("relative w-full h-auto max-h-screen overflow-auto hide-scrollbar flex flex-col justify-start items-start", className)}
     >
-      <div className="flex flex-col justify-start items-start w-full mt-1 px-1 gap-2 h-auto shrink-0 flex-nowrap hide-scrollbar">
+      <div className="flex flex-col justify-start items-start w-full px-1 gap-2 h-auto shrink-0 flex-nowrap hide-scrollbar">
+        {shouldShowRelationGraph && (
+          <div className="relative w-full h-36 border rounded-lg bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800">
+            <MemoRelationForceGraph className="w-full h-full" memo={memo} parentPage={parentPage} />
+            <div className="absolute top-1 left-2 text-xs opacity-60 font-mono gap-1 flex flex-row items-center">
+              <span>{t("common.relations")}</span>
+              <span className="text-xs opacity-60">(Beta)</span>
+            </div>
+          </div>
+        )}
         <div className="w-full flex flex-col">
           <p className="flex flex-row justify-start items-center w-full gap-1 mb-1 text-sm leading-6 text-gray-400 dark:text-gray-500 select-none">
-            <span>Created at</span>
+            <span>{t("common.created-at")}</span>
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">{memo.createTime?.toLocaleString()}</p>
         </div>
         {!isEqual(memo.createTime, memo.updateTime) && (
           <div className="w-full flex flex-col">
             <p className="flex flex-row justify-start items-center w-full gap-1 mb-1 text-sm leading-6 text-gray-400 dark:text-gray-500 select-none">
-              <span>Last updated at</span>
+              <span>{t("common.last-updated-at")}</span>
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400">{memo.updateTime?.toLocaleString()}</p>
           </div>
@@ -39,7 +48,7 @@ const MemoDetailSidebar = ({ memo, className }: Props) => {
         {hasSpecialProperty && (
           <div className="w-full flex flex-col">
             <p className="flex flex-row justify-start items-center w-full gap-1 mb-1 text-sm leading-6 text-gray-400 dark:text-gray-500 select-none">
-              <span>Properties</span>
+              <span>{t("common.properties")}</span>
             </p>
             <div className="w-full flex flex-row justify-start items-center gap-x-2 gap-y-1 flex-wrap text-gray-500 dark:text-gray-400">
               {property.hasLink && (
@@ -69,26 +78,26 @@ const MemoDetailSidebar = ({ memo, className }: Props) => {
             </div>
           </div>
         )}
-        {property.tags.length > 0 && (
-          <>
+        {memo.tags.length > 0 && (
+          <div className="w-full">
             <div className="flex flex-row justify-start items-center w-full gap-1 mb-1 text-sm leading-6 text-gray-400 dark:text-gray-500 select-none">
               <span>{t("common.tags")}</span>
-              <span className="shrink-0">({property.tags.length})</span>
+              <span className="shrink-0">({memo.tags.length})</span>
             </div>
             <div className="w-full flex flex-row justify-start items-center relative flex-wrap gap-x-2 gap-y-1">
-              {property.tags.map((tag) => (
+              {memo.tags.map((tag) => (
                 <div
                   key={tag}
                   className="shrink-0 w-auto max-w-full text-sm rounded-md leading-6 flex flex-row justify-start items-center select-none hover:opacity-80 text-gray-600 dark:text-gray-400 dark:border-zinc-800"
                 >
                   <HashIcon className="group-hover:hidden w-4 h-auto shrink-0 opacity-40" />
-                  <div className={clsx("inline-flex flex-nowrap ml-0.5 gap-0.5 cursor-pointer max-w-[calc(100%-16px)]")}>
+                  <div className={cn("inline-flex flex-nowrap ml-0.5 gap-0.5 cursor-pointer max-w-[calc(100%-16px)]")}>
                     <span className="truncate dark:opacity-80">{tag}</span>
                   </div>
                 </div>
               ))}
             </div>
-          </>
+          </div>
         )}
       </div>
     </aside>

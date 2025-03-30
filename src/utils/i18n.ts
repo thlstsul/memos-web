@@ -2,7 +2,6 @@ import { FallbackLngObjList } from "i18next";
 import { useTranslation } from "react-i18next";
 import i18n, { locales, TLocale } from "@/i18n";
 import enTranslation from "@/locales/en.json";
-import type { NestedKeyOf } from "@/types/utils/nestedKeyOf.types";
 
 export const findNearestMatchedLanguage = (language: string): Locale => {
   if (locales.includes(language as TLocale)) {
@@ -33,6 +32,10 @@ export const findNearestMatchedLanguage = (language: string): Locale => {
   return (i18n.store.options.fallbackLng as FallbackLngObjList).default[0] as Locale;
 };
 
+type NestedKeyOf<T, K = keyof T> = K extends keyof T & (string | number)
+  ? `${K}` | (T[K] extends object ? `${K}.${NestedKeyOf<T[K]>}` : never)
+  : never;
+
 // Represents the keys of nested translation objects.
 export type Translations = NestedKeyOf<typeof enTranslation>;
 
@@ -42,4 +45,9 @@ type TypedT = (key: Translations, params?: Record<string, any>) => string;
 export const useTranslate = (): TypedT => {
   const { t } = useTranslation<Translations>();
   return t;
+};
+
+export const isValidateLocale = (locale: string | undefined | null): boolean => {
+  if (!locale) return false;
+  return locales.includes(locale);
 };

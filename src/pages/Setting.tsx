@@ -1,6 +1,8 @@
 import { Option, Select } from "@mui/joy";
 import { CogIcon, DatabaseIcon, KeyIcon, LibraryIcon, LucideIcon, Settings2Icon, UserIcon, UsersIcon } from "lucide-react";
+import { observer } from "mobx-react-lite";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import MobileHeader from "@/components/MobileHeader";
 import MemberSection from "@/components/Settings/MemberSection";
 import MemoRelatedSettings from "@/components/Settings/MemoRelatedSettings";
@@ -11,8 +13,8 @@ import SectionMenuItem from "@/components/Settings/SectionMenuItem";
 import StorageSection from "@/components/Settings/StorageSection";
 import WorkspaceSection from "@/components/Settings/WorkspaceSection";
 import useCurrentUser from "@/hooks/useCurrentUser";
-import { useCommonContext } from "@/layouts/CommonContextProvider";
-import { useWorkspaceSettingStore } from "@/store/v1";
+import useResponsiveWidth from "@/hooks/useResponsiveWidth";
+import { workspaceStore } from "@/store/v2";
 import { User_Role } from "@/types/proto/api/v1/user_service";
 import { WorkspaceSettingKey } from "@/types/proto/store/workspace_setting";
 import { useTranslate } from "@/utils/i18n";
@@ -35,11 +37,11 @@ const SECTION_ICON_MAP: Record<SettingSection, LucideIcon> = {
   sso: KeyIcon,
 };
 
-const Setting = () => {
+const Setting = observer(() => {
   const t = useTranslate();
-  const commonContext = useCommonContext();
+  const { md } = useResponsiveWidth();
+  const location = useLocation();
   const user = useCurrentUser();
-  const workspaceSettingStore = useWorkspaceSettingStore();
   const [state, setState] = useState<State>({
     selectedSection: "my-account",
   });
@@ -54,6 +56,17 @@ const Setting = () => {
   }, [isHost]);
 
   useEffect(() => {
+    let hash = location.hash.slice(1) as SettingSection;
+    // If the hash is not a valid section, redirect to the default section.
+    if (![...BASIC_SECTIONS, ...ADMIN_SECTIONS].includes(hash)) {
+      hash = "my-account";
+    }
+    setState({
+      selectedSection: hash,
+    });
+  }, [location.hash]);
+
+  useEffect(() => {
     if (!isHost) {
       return;
     }
@@ -61,20 +74,18 @@ const Setting = () => {
     // Initial fetch for workspace settings.
     (async () => {
       [WorkspaceSettingKey.MEMO_RELATED, WorkspaceSettingKey.STORAGE].forEach(async (key) => {
-        await workspaceSettingStore.fetchWorkspaceSetting(key);
+        await workspaceStore.fetchWorkspaceSetting(key);
       });
     })();
   }, [isHost]);
 
   const handleSectionSelectorItemClick = useCallback((settingSection: SettingSection) => {
-    setState({
-      selectedSection: settingSection,
-    });
+    window.location.hash = settingSection;
   }, []);
 
   return (
     <section className="@container w-full max-w-5xl min-h-full flex flex-col justify-start items-start sm:pt-3 md:pt-6 pb-8">
-      <MobileHeader />
+      {!md && <MobileHeader />}
       <div className="w-full px-4 sm:px-6">
         <div className="w-full shadow flex flex-row justify-start items-start px-4 py-3 rounded-xl bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-400">
           <div className="hidden sm:flex flex-col justify-start items-start w-40 h-auto shrink-0 py-2">
@@ -103,7 +114,9 @@ const Setting = () => {
                       onClick={() => handleSectionSelectorItemClick(item)}
                     />
                   ))}
-                  <span className="px-3 mt-2 opacity-70 text-sm">Version: v{commonContext.profile.version}</span>
+                  <span className="px-3 mt-2 opacity-70 text-sm">
+                    {t("setting.version")}: v{workspaceStore.state.profile.version}
+                  </span>
                 </div>
               </>
             ) : null}
@@ -138,6 +151,6 @@ const Setting = () => {
       </div>
     </section>
   );
-};
+});
 
 export default Setting;

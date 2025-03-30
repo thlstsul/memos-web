@@ -1,10 +1,11 @@
-import { Button, IconButton, Input } from "@mui/joy";
 import Textarea from "@mui/joy/Textarea/Textarea";
+import { Button, Input } from "@usememos/mui";
 import { XIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
-import { workspaceSettingNamePrefix, useWorkspaceSettingStore } from "@/store/v1";
-import { WorkspaceCustomProfile, WorkspaceGeneralSetting } from "@/types/proto/api/v1/workspace_setting_service";
+import { workspaceSettingNamePrefix } from "@/store/v1";
+import { workspaceStore } from "@/store/v2";
+import { WorkspaceCustomProfile } from "@/types/proto/api/v1/workspace_setting_service";
 import { WorkspaceSettingKey } from "@/types/proto/store/workspace_setting";
 import { useTranslate } from "@/utils/i18n";
 import AppearanceSelect from "./AppearanceSelect";
@@ -13,12 +14,9 @@ import LocaleSelect from "./LocaleSelect";
 
 type Props = DialogProps;
 
-const UpdateCustomizedProfileDialog: React.FC<Props> = ({ destroy }: Props) => {
+const UpdateCustomizedProfileDialog = ({ destroy }: Props) => {
   const t = useTranslate();
-  const workspaceSettingStore = useWorkspaceSettingStore();
-  const workspaceGeneralSetting = WorkspaceGeneralSetting.fromPartial(
-    workspaceSettingStore.getWorkspaceSettingByKey(WorkspaceSettingKey.GENERAL)?.generalSetting || {},
-  );
+  const workspaceGeneralSetting = workspaceStore.state.generalSetting;
   const [customProfile, setCustomProfile] = useState<WorkspaceCustomProfile>(
     WorkspaceCustomProfile.fromPartial(workspaceGeneralSetting.customProfile || {}),
   );
@@ -83,7 +81,7 @@ const UpdateCustomizedProfileDialog: React.FC<Props> = ({ destroy }: Props) => {
     }
 
     try {
-      await workspaceSettingStore.setWorkspaceSetting({
+      await workspaceStore.upsertWorkspaceSetting({
         name: `${workspaceSettingNamePrefix}${WorkspaceSettingKey.GENERAL}`,
         generalSetting: {
           ...workspaceGeneralSetting,
@@ -99,14 +97,14 @@ const UpdateCustomizedProfileDialog: React.FC<Props> = ({ destroy }: Props) => {
   };
 
   return (
-    <>
-      <div className="dialog-header-container">
+    <div className="max-w-full shadow flex flex-col justify-start items-start bg-white dark:bg-zinc-800 dark:text-gray-300 p-4 rounded-lg">
+      <div className="flex flex-row justify-between items-center mb-4 gap-2 w-full">
         <p className="title-text">{t("setting.system-section.customize-server.title")}</p>
-        <IconButton size="sm" onClick={handleCloseButtonClick}>
+        <Button size="sm" variant="plain" onClick={handleCloseButtonClick}>
           <XIcon className="w-5 h-auto" />
-        </IconButton>
+        </Button>
       </div>
-      <div className="dialog-content-container min-w-[16rem]">
+      <div className="flex flex-col justify-start items-start min-w-[16rem]">
         <p className="text-sm mb-1">{t("setting.system-section.server-name")}</p>
         <Input className="w-full" type="text" value={customProfile.title} onChange={handleNameChanged} />
         <p className="text-sm mb-1 mt-2">{t("setting.system-section.customize-server.icon-url")}</p>
@@ -123,15 +121,17 @@ const UpdateCustomizedProfileDialog: React.FC<Props> = ({ destroy }: Props) => {
               {t("common.restore")}
             </Button>
           </div>
-          <div className="flex flex-row justify-end items-center">
+          <div className="flex flex-row justify-end items-center gap-2">
             <Button variant="plain" onClick={handleCloseButtonClick}>
               {t("common.cancel")}
             </Button>
-            <Button onClick={handleSaveButtonClick}>{t("common.save")}</Button>
+            <Button color="primary" onClick={handleSaveButtonClick}>
+              {t("common.save")}
+            </Button>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

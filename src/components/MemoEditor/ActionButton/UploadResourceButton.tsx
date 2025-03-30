@@ -1,5 +1,5 @@
-import { IconButton } from "@mui/joy";
-import { PaperclipIcon } from "lucide-react";
+import { Button } from "@usememos/mui";
+import { LoaderIcon, PaperclipIcon } from "lucide-react";
 import { useContext, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useResourceStore } from "@/store/v1";
@@ -66,8 +66,8 @@ const UploadResourceButton = () => {
   };
 
   return (
-    <IconButton size="sm" disabled={state.uploadingFlag}>
-      <PaperclipIcon className="w-5 h-5 mx-auto" />
+    <Button className="relative" size="sm" variant="plain" disabled={state.uploadingFlag}>
+      {state.uploadingFlag ? <LoaderIcon className="w-5 h-5 mx-auto animate-spin" /> : <PaperclipIcon className="w-5 h-5 mx-auto" />}
       <input
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         ref={fileInputRef}
@@ -78,7 +78,7 @@ const UploadResourceButton = () => {
         multiple={true}
         accept="*"
       />
-    </IconButton>
+    </Button>
   );
 };
 

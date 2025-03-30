@@ -1,11 +1,12 @@
-import { Button, IconButton, Input, Textarea } from "@mui/joy";
+import { Textarea } from "@mui/joy";
+import { Button, Input } from "@usememos/mui";
 import { isEqual } from "lodash-es";
 import { XIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { convertFileToBase64 } from "@/helpers/utils";
 import useCurrentUser from "@/hooks/useCurrentUser";
-import { userNamePrefix, useUserStore } from "@/store/v1";
+import { userStore, workspaceStore } from "@/store/v2";
 import { User as UserPb } from "@/types/proto/api/v1/user_service";
 import { useTranslate } from "@/utils/i18n";
 import { generateDialog } from "./Dialog";
@@ -21,10 +22,9 @@ interface State {
   description: string;
 }
 
-const UpdateAccountDialog: React.FC<Props> = ({ destroy }: Props) => {
+const UpdateAccountDialog = ({ destroy }: Props) => {
   const t = useTranslate();
   const currentUser = useCurrentUser();
-  const userStore = useUserStore();
   const [state, setState] = useState<State>({
     avatarUrl: currentUser.avatarUrl,
     username: currentUser.username,
@@ -32,6 +32,7 @@ const UpdateAccountDialog: React.FC<Props> = ({ destroy }: Props) => {
     email: currentUser.email,
     description: currentUser.description,
   });
+  const workspaceGeneralSetting = workspaceStore.state.generalSetting;
 
   const handleCloseBtnClick = () => {
     destroy();
@@ -104,7 +105,7 @@ const UpdateAccountDialog: React.FC<Props> = ({ destroy }: Props) => {
 
     try {
       const updateMask = [];
-      if (!isEqual(currentUser.name.replace(userNamePrefix, ""), state.username)) {
+      if (!isEqual(currentUser.username, state.username)) {
         updateMask.push("username");
       }
       if (!isEqual(currentUser.nickname, state.nickname)) {
@@ -139,14 +140,14 @@ const UpdateAccountDialog: React.FC<Props> = ({ destroy }: Props) => {
   };
 
   return (
-    <>
-      <div className="dialog-header-container !w-64">
+    <div className="max-w-full shadow flex flex-col justify-start items-start bg-white dark:bg-zinc-800 dark:text-gray-300 p-4 rounded-lg">
+      <div className="flex flex-row justify-between items-center mb-4 gap-2 w-full">
         <p className="title-text">{t("setting.account-section.update-information")}</p>
-        <IconButton size="sm" onClick={handleCloseBtnClick}>
+        <Button size="sm" variant="plain" onClick={handleCloseBtnClick}>
           <XIcon className="w-5 h-auto" />
-        </IconButton>
+        </Button>
       </div>
-      <div className="dialog-content-container space-y-2">
+      <div className="flex flex-col justify-start items-start !w-64 space-y-2">
         <div className="w-full flex flex-row justify-start items-center">
           <span className="text-sm mr-2">{t("common.avatar")}</span>
           <label className="relative cursor-pointer hover:opacity-80">
@@ -168,17 +169,27 @@ const UpdateAccountDialog: React.FC<Props> = ({ destroy }: Props) => {
           {t("common.username")}
           <span className="text-sm text-gray-400 ml-1">({t("setting.account-section.username-note")})</span>
         </p>
-        <Input className="w-full" value={state.username} onChange={handleUsernameChanged} />
+        <Input
+          className="w-full"
+          value={state.username}
+          onChange={handleUsernameChanged}
+          disabled={workspaceGeneralSetting.disallowChangeUsername}
+        />
         <p className="text-sm">
           {t("common.nickname")}
           <span className="text-sm text-gray-400 ml-1">({t("setting.account-section.nickname-note")})</span>
         </p>
-        <Input className="w-full" value={state.nickname} onChange={handleNicknameChanged} />
+        <Input
+          className="w-full"
+          value={state.nickname}
+          onChange={handleNicknameChanged}
+          disabled={workspaceGeneralSetting.disallowChangeNickname}
+        />
         <p className="text-sm">
           {t("common.email")}
           <span className="text-sm text-gray-400 ml-1">({t("setting.account-section.email-note")})</span>
         </p>
-        <Input className="w-full" type="email" value={state.email} onChange={handleEmailChanged} />
+        <Input fullWidth type="email" value={state.email} onChange={handleEmailChanged} />
         <p className="text-sm">{t("common.description")}</p>
         <Textarea
           className="w-full"
@@ -189,7 +200,7 @@ const UpdateAccountDialog: React.FC<Props> = ({ destroy }: Props) => {
           onChange={handleDescriptionChanged}
         />
         <div className="w-full flex flex-row justify-end items-center pt-4 space-x-2">
-          <Button color="neutral" variant="plain" onClick={handleCloseBtnClick}>
+          <Button variant="plain" onClick={handleCloseBtnClick}>
             {t("common.cancel")}
           </Button>
           <Button color="primary" onClick={handleSaveBtnClick}>
@@ -197,7 +208,7 @@ const UpdateAccountDialog: React.FC<Props> = ({ destroy }: Props) => {
           </Button>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
