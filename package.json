@@ -82,7 +82,7 @@
     "typescript": "^5.8.2",
     "vite": "^6.2.1",
     "vite-plugin-compression": "^0.5.1",
-    "vite-plugin-pwa": "^0.20.5"
+    "vite-plugin-pwa": "^1.0.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
