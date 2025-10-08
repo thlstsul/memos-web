@@ -79,7 +79,7 @@ function CreateShortcutDialog({ open, onOpenChange, shortcut: initialShortcut, o
         toast.success("Update shortcut successfully");
       }
       // Refresh shortcuts.
-      await userStore.fetchShortcuts();
+      await userStore.fetchUserSettings();
       requestState.setFinish();
       onSuccess?.();
       onOpenChange(false);
@@ -117,21 +117,11 @@ function CreateShortcutDialog({ open, onOpenChange, shortcut: initialShortcut, o
               <li>
                 <a
                   className="text-primary hover:underline"
-                  href="https://www.usememos.com/docs/getting-started/shortcuts"
+                  href="https://www.usememos.com/docs/guides/shortcuts"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   Docs - Shortcuts
-                </a>
-              </li>
-              <li>
-                <a
-                  className="text-primary hover:underline"
-                  href="https://www.usememos.com/docs/getting-started/shortcuts#how-to-write-a-filter"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  How to Write a Filter?
                 </a>
               </li>
             </ul>
