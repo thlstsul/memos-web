@@ -2,27 +2,31 @@ import { uniqBy } from "lodash-es";
 import { makeAutoObservable } from "mobx";
 import { workspaceServiceClient } from "@/grpcweb";
 import { WorkspaceProfile, WorkspaceSetting_Key } from "@/types/proto/api/v1/workspace_service";
-import { WorkspaceGeneralSetting, WorkspaceMemoRelatedSetting, WorkspaceSetting } from "@/types/proto/api/v1/workspace_service";
+import {
+  WorkspaceSetting_GeneralSetting,
+  WorkspaceSetting_MemoRelatedSetting,
+  WorkspaceSetting,
+} from "@/types/proto/api/v1/workspace_service";
 import { isValidateLocale } from "@/utils/i18n";
 import { workspaceSettingNamePrefix } from "./common";
 
 class LocalState {
   locale: string = "en";
-  appearance: string = "system";
+  theme: string = "default";
   profile: WorkspaceProfile = WorkspaceProfile.fromPartial({});
   settings: WorkspaceSetting[] = [];
 
   get generalSetting() {
     return (
       this.settings.find((setting) => setting.name === `${workspaceSettingNamePrefix}${WorkspaceSetting_Key.GENERAL}`)?.generalSetting ||
-      WorkspaceGeneralSetting.fromPartial({})
+      WorkspaceSetting_GeneralSetting.fromPartial({})
     );
   }
 
   get memoRelatedSetting() {
     return (
       this.settings.find((setting) => setting.name === `${workspaceSettingNamePrefix}${WorkspaceSetting_Key.MEMO_RELATED}`)
-        ?.memoRelatedSetting || WorkspaceMemoRelatedSetting.fromPartial({})
+        ?.memoRelatedSetting || WorkspaceSetting_MemoRelatedSetting.fromPartial({})
     );
   }
 
@@ -38,8 +42,8 @@ class LocalState {
     if (!isValidateLocale(finalState.locale)) {
       finalState.locale = "en";
     }
-    if (!["system", "light", "dark"].includes(finalState.appearance)) {
-      finalState.appearance = "system";
+    if (!["default", "default-dark", "paper", "whitewall"].includes(finalState.theme)) {
+      finalState.theme = "default";
     }
     Object.assign(this, finalState);
   }
@@ -68,11 +72,32 @@ const workspaceStore = (() => {
     );
   };
 
+  const setTheme = async (theme: string) => {
+    state.setPartial({ theme });
+
+    // Update the workspace setting - store theme in a custom field or handle differently
+    const generalSetting = state.generalSetting;
+    const updatedGeneralSetting = WorkspaceSetting_GeneralSetting.fromPartial({
+      ...generalSetting,
+      customProfile: {
+        ...generalSetting.customProfile,
+      },
+    });
+
+    await upsertWorkspaceSetting(
+      WorkspaceSetting.fromPartial({
+        name: `${workspaceSettingNamePrefix}${WorkspaceSetting_Key.GENERAL}`,
+        generalSetting: updatedGeneralSetting,
+      }),
+    );
+  };
+
   return {
     state,
     fetchWorkspaceSetting,
     upsertWorkspaceSetting,
     getWorkspaceSettingByKey,
+    setTheme,
   };
 })();
 
@@ -86,7 +111,7 @@ export const initialWorkspaceStore = async () => {
   const workspaceGeneralSetting = workspaceStore.state.generalSetting;
   workspaceStore.state.setPartial({
     locale: workspaceGeneralSetting.customProfile?.locale,
-    appearance: workspaceGeneralSetting.customProfile?.appearance,
+    theme: "default",
     profile: workspaceProfile,
   });
 };

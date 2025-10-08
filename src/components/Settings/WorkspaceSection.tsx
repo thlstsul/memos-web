@@ -1,9 +1,7 @@
 import { isEqual } from "lodash-es";
-import { ExternalLinkIcon } from "lucide-react";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -14,18 +12,18 @@ import useDialog from "@/hooks/useDialog";
 import { workspaceStore } from "@/store";
 import { workspaceSettingNamePrefix } from "@/store/common";
 import { IdentityProvider } from "@/types/proto/api/v1/idp_service";
-import { WorkspaceGeneralSetting, WorkspaceSetting_Key } from "@/types/proto/api/v1/workspace_service";
+import { WorkspaceSetting_GeneralSetting, WorkspaceSetting_Key } from "@/types/proto/api/v1/workspace_service";
 import { useTranslate } from "@/utils/i18n";
-import ThemeSelector from "../ThemeSelector";
+import ThemeSelect from "../ThemeSelect";
 import UpdateCustomizedProfileDialog from "../UpdateCustomizedProfileDialog";
 
 const WorkspaceSection = observer(() => {
   const t = useTranslate();
   const customizeDialog = useDialog();
-  const originalSetting = WorkspaceGeneralSetting.fromPartial(
+  const originalSetting = WorkspaceSetting_GeneralSetting.fromPartial(
     workspaceStore.getWorkspaceSettingByKey(WorkspaceSetting_Key.GENERAL)?.generalSetting || {},
   );
-  const [workspaceGeneralSetting, setWorkspaceGeneralSetting] = useState<WorkspaceGeneralSetting>(originalSetting);
+  const [workspaceGeneralSetting, setWorkspaceGeneralSetting] = useState<WorkspaceSetting_GeneralSetting>(originalSetting);
   const [identityProviderList, setIdentityProviderList] = useState<IdentityProvider[]>([]);
 
   useEffect(() => {
@@ -36,9 +34,9 @@ const WorkspaceSection = observer(() => {
     customizeDialog.open();
   };
 
-  const updatePartialSetting = (partial: Partial<WorkspaceGeneralSetting>) => {
+  const updatePartialSetting = (partial: Partial<WorkspaceSetting_GeneralSetting>) => {
     setWorkspaceGeneralSetting(
-      WorkspaceGeneralSetting.fromPartial({
+      WorkspaceSetting_GeneralSetting.fromPartial({
         ...workspaceGeneralSetting,
         ...partial,
       }),
@@ -84,9 +82,9 @@ const WorkspaceSection = observer(() => {
       <p className="font-medium text-foreground">{t("setting.system-section.title")}</p>
       <div className="w-full flex flex-row justify-between items-center">
         <span>Theme</span>
-        <ThemeSelector
+        <ThemeSelect
           value={workspaceGeneralSetting.theme || "default"}
-          onValueChange={(value) => updatePartialSetting({ theme: value })}
+          onValueChange={(value: string) => updatePartialSetting({ theme: value })}
           className="min-w-fit"
         />
       </div>
@@ -110,16 +108,6 @@ const WorkspaceSection = observer(() => {
         value={workspaceGeneralSetting.additionalScript}
         onChange={(event) => updatePartialSetting({ additionalScript: event.target.value })}
       />
-      <div className="w-full">
-        <Link
-          className="text-muted-foreground text-sm flex flex-row justify-start items-center hover:underline hover:text-primary"
-          to="https://usememos.com/docs/advanced-settings/custom-style-and-script"
-          target="_blank"
-        >
-          {t("common.learn-more")}
-          <ExternalLinkIcon className="inline w-4 h-auto ml-1" />
-        </Link>
-      </div>
       <div className="w-full flex flex-row justify-between items-center">
         <span>{t("setting.workspace-section.disallow-user-registration")}</span>
         <Switch
